@@ -589,11 +589,67 @@ canvas{display:block;}
     </div>
   </div>
   <div class="panel" style="margin-bottom:0;">
-    <div class="ptitle">ELEVATION ARC <span id="elevLbl">--</span></div>
+    <div class="ptitle">TRAJECTORY PROFILE <span id="elevLbl">--</span></div>
     <canvas id="elevCanvas" height="240"></canvas>
     <div style="font-size:8px;letter-spacing:2px;color:var(--dim);margin-top:5px;" id="elevSub">-</div>
   </div>
 </div>
+
+<!-- LIVE PHONE ALIGNMENT COMPASS -->
+<div class="panel" id="liveCompassPanel" style="margin-bottom:14px;">
+  <div class="ptitle">
+    &#9654; LIVE BARREL ALIGNMENT &mdash; TURN PHONE TO ALIGN WITH TARGET
+    <span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <span id="liveCompBadge" style="font-size:8px;letter-spacing:2px;padding:3px 8px;border:1px solid var(--line);color:var(--dim);background:var(--bg3);">INACTIVE</span>
+      <button class="btn" id="liveCompStartBtn" onclick="startLiveCompass()" style="font-size:8px;padding:4px 10px;">&#9654; START</button>
+      <button class="btn" id="liveCompStopBtn" onclick="stopLiveCompass()" style="display:none;font-size:8px;padding:4px 10px;">&#9646;&#9646; STOP</button>
+    </span>
+  </div>
+  <div id="liveCompPermNote" style="display:none;font-size:9px;letter-spacing:2px;color:var(--yel);padding:4px 0 10px;">
+    &#9888; iOS: TAP START &mdash; permission required to read compass sensor
+  </div>
+  <div id="liveCompBody" style="display:none;">
+
+    <!-- BIG DELTA READOUT -->
+    <div style="display:flex;align-items:stretch;gap:0;border:2px solid var(--ink);margin-bottom:12px;">
+      <div style="flex:1;padding:14px 10px;text-align:center;border-right:1px solid var(--line);background:var(--cbg);">
+        <div style="font-size:8px;letter-spacing:3px;color:var(--ink3);margin-bottom:6px;">PHONE HEADING</div>
+        <div id="lcPhoneHdg" style="font-size:36px;font-weight:900;letter-spacing:-1px;color:var(--ink);">---</div>
+        <div id="lcPhoneDir" style="font-size:10px;letter-spacing:3px;color:var(--ink3);margin-top:3px;">--</div>
+      </div>
+      <div style="flex:1.2;padding:14px 10px;text-align:center;background:var(--bg2);">
+        <div style="font-size:8px;letter-spacing:3px;color:var(--ink3);margin-bottom:6px;">TURN TO TARGET</div>
+        <div id="lcDeltaVal" style="font-size:42px;font-weight:900;letter-spacing:-2px;color:var(--ink);">---</div>
+        <div id="lcDeltaDir" style="font-size:11px;letter-spacing:3px;font-weight:900;margin-top:3px;color:var(--ink);">---</div>
+      </div>
+      <div style="flex:1;padding:14px 10px;text-align:center;border-left:1px solid var(--line);background:var(--cbg);">
+        <div style="font-size:8px;letter-spacing:3px;color:var(--ink3);margin-bottom:6px;">TARGET BEARING</div>
+        <div id="lcTargetBrg" style="font-size:36px;font-weight:900;letter-spacing:-1px;color:var(--ink);">---</div>
+        <div id="lcTargetDir" style="font-size:10px;letter-spacing:3px;color:var(--ink3);margin-top:3px;">--</div>
+      </div>
+    </div>
+
+    <!-- ALIGNMENT STATUS BAR -->
+    <div id="lcAlignBar" style="
+      padding:10px 16px;margin-bottom:12px;
+      border:2px solid var(--line);
+      font-size:11px;letter-spacing:3px;font-weight:900;
+      text-align:center;transition:background .15s,border-color .15s,color .15s;">
+      AWAITING SENSOR&hellip;
+    </div>
+
+    <!-- LIVE ROTATING COMPASS CANVAS -->
+    <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+      <canvas id="liveCompCanvas" width="300" height="300" style="border:2px solid var(--line);max-width:100%;"></canvas>
+      <div style="font-size:8px;letter-spacing:3px;color:var(--dim);text-align:center;">
+        ROSE rotates with phone &nbsp;&middot;&nbsp;
+        <span style="color:var(--ink);font-weight:900;">WHITE ARROW</span> = target bearing &nbsp;&middot;&nbsp;
+        <span style="color:#ff8800;font-weight:900;">ORANGE MARKER</span> = phone heading
+      </div>
+    </div>
+
+  </div><!-- /liveCompBody -->
+</div><!-- /liveCompassPanel -->
 
 <!-- DATA GRIDS -->
 <div class="panel"><div class="ptitle">NAVIGATION DATA</div><div id="navGrid" class="g4"></div></div>
@@ -1888,6 +1944,323 @@ updateMuzDisplay();
 setMuzUI('none');
 renderHist();
 window.addEventListener('resize',()=>{if(RES)render();});
+
+/* ═══════════════════════════════════════
+   LIVE BARREL ALIGNMENT COMPASS
+   - Compass rose rotates with phone heading
+   - White arrow always points at TARGET bearing (absolute)
+   - Delta readout = degrees left/right to rotate phone
+   - Alignment lock when within ±3°
+═══════════════════════════════════════ */
+let LC = {
+  active: false,
+  heading: null,       // current phone heading (0-360°)
+  targetBrg: null,     // required traverse bearing from RES
+  rafId: null,
+  smoothed: null,      // smoothed heading for canvas
+};
+
+function startLiveCompass() {
+  // Show iOS permission note if needed
+  if (typeof DeviceOrientationEvent !== 'undefined' &&
+      typeof DeviceOrientationEvent.requestPermission === 'function') {
+    document.getElementById('liveCompPermNote').style.display = 'block';
+    DeviceOrientationEvent.requestPermission()
+      .then(state => {
+        document.getElementById('liveCompPermNote').style.display = 'none';
+        if (state === 'granted') _lcActivate();
+        else _lcSetBadge('error', 'SENSOR DENIED');
+      })
+      .catch(() => _lcSetBadge('error', 'SENSOR ERROR'));
+    return;
+  }
+  _lcActivate();
+}
+
+function _lcActivate() {
+  LC.active = true;
+  document.getElementById('liveCompStartBtn').style.display = 'none';
+  document.getElementById('liveCompStopBtn').style.display = '';
+  document.getElementById('liveCompBody').style.display = 'block';
+  _lcSetBadge('active', 'ACTIVE');
+  window.addEventListener('deviceorientationabsolute', _lcOnOrient, { passive: true });
+  window.addEventListener('deviceorientation',         _lcOnOrient, { passive: true });
+  LC.rafId = requestAnimationFrame(_lcDraw);
+}
+
+function stopLiveCompass() {
+  LC.active = false;
+  LC.heading = null; LC.smoothed = null;
+  window.removeEventListener('deviceorientationabsolute', _lcOnOrient);
+  window.removeEventListener('deviceorientation',         _lcOnOrient);
+  if (LC.rafId) { cancelAnimationFrame(LC.rafId); LC.rafId = null; }
+  document.getElementById('liveCompStartBtn').style.display = '';
+  document.getElementById('liveCompStopBtn').style.display = 'none';
+  document.getElementById('liveCompBody').style.display = 'none';
+  _lcSetBadge('inactive', 'INACTIVE');
+}
+
+function _lcOnOrient(e) {
+  let h = null;
+  if (typeof e.webkitCompassHeading === 'number' && e.webkitCompassHeading >= 0) {
+    h = e.webkitCompassHeading;                  // iOS: direct magnetic CW
+  } else if (e.alpha !== null && e.alpha !== undefined) {
+    h = (360 - e.alpha + 360) % 360;             // Android: CCW alpha → CW
+  }
+  if (h === null) return;
+  LC.heading = h;
+}
+
+function _lcSetBadge(state, txt) {
+  const b = document.getElementById('liveCompBadge');
+  b.textContent = txt;
+  if (state === 'active')       { b.style.color='var(--grn)'; b.style.borderColor='var(--grn)'; b.style.background='var(--rok)'; }
+  else if (state === 'locked')  { b.style.color='var(--bg)';  b.style.borderColor='var(--grn)'; b.style.background='var(--grn)'; }
+  else if (state === 'error')   { b.style.color='var(--red)'; b.style.borderColor='var(--red)'; b.style.background='var(--rerr)'; }
+  else                          { b.style.color='var(--dim)'; b.style.borderColor='var(--line)'; b.style.background='var(--bg3)'; }
+}
+
+/* Smooth angle using shortest-path lerp to prevent wrap-around jumps */
+function _lcLerpAngle(a, b, t) {
+  let diff = ((b - a + 540) % 360) - 180;
+  return (a + diff * t + 360) % 360;
+}
+
+function _lcDraw() {
+  if (!LC.active) return;
+  LC.rafId = requestAnimationFrame(_lcDraw);
+
+  // Pull target bearing from latest solution
+  const tBrg = RES ? RES.adjBrg : null;
+  LC.targetBrg = tBrg;
+
+  const phone = LC.heading;
+
+  // Smooth heading
+  if (phone !== null) {
+    if (LC.smoothed === null) LC.smoothed = phone;
+    else LC.smoothed = _lcLerpAngle(LC.smoothed, phone, 0.12);
+  }
+
+  // Update numeric readouts
+  const hdgEl   = document.getElementById('lcPhoneHdg');
+  const hdgDir  = document.getElementById('lcPhoneDir');
+  const tBrgEl  = document.getElementById('lcTargetBrg');
+  const tDirEl  = document.getElementById('lcTargetDir');
+  const deltaEl = document.getElementById('lcDeltaVal');
+  const deltaDr = document.getElementById('lcDeltaDir');
+  const bar     = document.getElementById('lcAlignBar');
+
+  if (phone === null) {
+    hdgEl.textContent = '---'; hdgDir.textContent = '--';
+    deltaEl.textContent = '---'; deltaDr.textContent = 'NO SENSOR';
+    bar.textContent = 'NO COMPASS SENSOR — USE MANUAL BEARING';
+    bar.style.borderColor = 'var(--red)'; bar.style.color = 'var(--red)'; bar.style.background = 'var(--rerr)';
+  } else {
+    hdgEl.textContent = Math.round(phone) + '°';
+    hdgDir.textContent = dirLbl(phone);
+  }
+
+  if (tBrg === null) {
+    tBrgEl.textContent = '---'; tDirEl.textContent = '--';
+    deltaEl.textContent = '---'; deltaDr.textContent = 'COMPUTE SOLUTION FIRST';
+    bar.textContent = 'NO SOLUTION — ENTER TARGET & COMPUTE';
+    bar.style.borderColor = 'var(--yel)'; bar.style.color = 'var(--yel)'; bar.style.background = 'var(--rwarn)';
+  } else {
+    tBrgEl.textContent = tBrg.toFixed(1) + '°';
+    tDirEl.textContent = dirLbl(tBrg);
+
+    if (phone !== null) {
+      // Delta: positive = turn RIGHT, negative = turn LEFT
+      let delta = ((tBrg - phone + 540) % 360) - 180;
+      const absDelta = Math.abs(delta);
+      const turnDir  = absDelta < 1 ? 'ON TARGET' : delta > 0 ? 'TURN RIGHT ▶' : '◀ TURN LEFT';
+      deltaEl.textContent = absDelta < 1 ? '0°' : Math.abs(delta).toFixed(1) + '°';
+
+      // Colour by proximity
+      if (absDelta <= 3) {
+        deltaEl.style.color = 'var(--grn)';
+        deltaDr.textContent = '✓ ALIGNED';
+        deltaDr.style.color = 'var(--grn)';
+        bar.textContent = '✓ BARREL ALIGNED — FIRE SOLUTION VALID';
+        bar.style.borderColor = 'var(--grn)'; bar.style.color = 'var(--grn)'; bar.style.background = 'var(--rok)';
+        _lcSetBadge('locked', 'ALIGNED ✓');
+      } else if (absDelta <= 15) {
+        deltaEl.style.color = 'var(--yel)';
+        deltaDr.textContent = turnDir;
+        deltaDr.style.color = 'var(--yel)';
+        bar.textContent = 'CLOSE — ' + turnDir + '  (' + Math.abs(delta).toFixed(1) + '° remaining)';
+        bar.style.borderColor = 'var(--yel)'; bar.style.color = 'var(--yel)'; bar.style.background = 'var(--rwarn)';
+        _lcSetBadge('active', 'ACTIVE');
+      } else {
+        deltaEl.style.color = 'var(--red)';
+        deltaDr.textContent = turnDir;
+        deltaDr.style.color = 'var(--red)';
+        bar.textContent = turnDir + '  —  ' + Math.abs(delta).toFixed(1) + '° to target bearing ' + tBrg.toFixed(1) + '°';
+        bar.style.borderColor = 'var(--red)'; bar.style.color = 'var(--red)'; bar.style.background = 'var(--rerr)';
+        _lcSetBadge('active', 'ACTIVE');
+      }
+    }
+  }
+
+  // Draw canvas
+  _lcDrawCanvas(LC.smoothed, tBrg);
+}
+
+function _lcDrawCanvas(phoneHdg, tBrg) {
+  const cv = document.getElementById('liveCompCanvas');
+  if (!cv) return;
+  const ctx = cv.getContext('2d');
+  const CW = cv.width, CH = cv.height;
+  const cx = CW / 2, cy = CH / 2;
+  const R = cx - 8;
+
+  ctx.clearRect(0, 0, CW, CH);
+
+  // Background
+  const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, R);
+  grd.addColorStop(0, isDark ? '#1a1a18' : '#ffffff');
+  grd.addColorStop(1, isDark ? '#0a0a08' : '#f0f0ea');
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2);
+  ctx.fillStyle = grd; ctx.fill();
+  ctx.strokeStyle = getCSSVar('--ink'); ctx.lineWidth = 2.5; ctx.stroke();
+
+  const ink  = getCSSVar('--ink');
+  const ink3 = getCSSVar('--ink3');
+  const line = getCSSVar('--line');
+  const red  = getCSSVar('--red');
+  const grn  = getCSSVar('--grn');
+
+  // — rotate the entire rose by NEGATIVE phone heading so
+  //   the direction the phone faces always sits at top —
+  const roseRot = phoneHdg !== null ? RAD(-phoneHdg) : 0;
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(roseRot);
+
+  // Tick marks every 5°
+  for (let i = 0; i < 72; i++) {
+    const a    = RAD(i * 5);
+    const maj  = i % 18 === 0;
+    const med  = i % 6 === 0;
+    const r1   = maj ? R - 28 : med ? R - 20 : R - 14;
+    const r2   = R - 10;
+    ctx.beginPath();
+    ctx.moveTo(r1 * Math.sin(a), -r1 * Math.cos(a));
+    ctx.lineTo(r2 * Math.sin(a), -r2 * Math.cos(a));
+    ctx.strokeStyle = maj ? ink : med ? ink3 : line;
+    ctx.lineWidth   = maj ? 2.2 : med ? 1.3 : 0.7;
+    ctx.stroke();
+  }
+
+  // Degree labels every 30°
+  for (let i = 0; i < 12; i++) {
+    const a = RAD(i * 30);
+    const rv = R - 42;
+    ctx.fillStyle  = ink3;
+    ctx.font       = 'bold 10px Times New Roman';
+    ctx.textAlign  = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(i * 30, rv * Math.sin(a), -rv * Math.cos(a));
+  }
+
+  // Cardinal letters
+  const cardinals = [['N', 0, red], ['E', 90, ink], ['S', 180, ink], ['W', 270, ink]];
+  cardinals.forEach(([l, deg, col]) => {
+    const a = RAD(deg), rv = R - 60;
+    ctx.fillStyle  = col;
+    ctx.font       = 'bold 15px Times New Roman';
+    ctx.textAlign  = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(l, rv * Math.sin(a), -rv * Math.cos(a));
+  });
+
+  ctx.restore(); // end rose rotation
+
+  // — Target bearing arrow (fixed in canvas space, always points UP = target direction) —
+  if (tBrg !== null) {
+    const delta = phoneHdg !== null ? ((tBrg - phoneHdg + 540) % 360) - 180 : tBrg;
+    const aligned = phoneHdg !== null && Math.abs(delta) <= 3;
+    const arrowAngle = phoneHdg !== null ? RAD(delta) : RAD(tBrg); // relative to top
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(arrowAngle);
+
+    const arrowColor = aligned ? grn : ink;
+    const arrowLen   = R - 22;
+
+    // Shaft
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(0, -arrowLen);
+    ctx.strokeStyle  = arrowColor;
+    ctx.lineWidth    = aligned ? 5 : 3.5;
+    ctx.lineCap      = 'round';
+    ctx.stroke();
+
+    // Arrowhead
+    ctx.beginPath();
+    ctx.moveTo(0, -arrowLen);
+    ctx.lineTo(-10, -arrowLen + 18);
+    ctx.lineTo( 10, -arrowLen + 18);
+    ctx.closePath();
+    ctx.fillStyle = arrowColor;
+    ctx.fill();
+
+    // Back tail
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(0, R - 55);
+    ctx.strokeStyle = arrowColor + '55';
+    ctx.lineWidth   = 2;
+    ctx.stroke();
+
+    // Target bearing label on arrow tip
+    ctx.fillStyle    = arrowColor;
+    ctx.font         = 'bold 11px Times New Roman';
+    ctx.textAlign    = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(tBrg.toFixed(1) + '°', 0, -arrowLen - 14);
+
+    ctx.restore();
+  }
+
+  // — Phone heading marker: orange triangle at top of rose (always at 12 o'clock) —
+  if (phoneHdg !== null) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    // Triangle pointing down into the rose at top
+    const tipY = -(R - 8);
+    ctx.beginPath();
+    ctx.moveTo(0, tipY);
+    ctx.lineTo(-9, tipY - 16);
+    ctx.lineTo( 9, tipY - 16);
+    ctx.closePath();
+    ctx.fillStyle   = '#ff8800';
+    ctx.strokeStyle = '#ff8800';
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Center dot
+  ctx.beginPath(); ctx.arc(cx, cy, 6, 0, Math.PI * 2);
+  ctx.fillStyle = getCSSVar('--bg2'); ctx.fill();
+  ctx.strokeStyle = ink; ctx.lineWidth = 2; ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx, cy, 2.5, 0, Math.PI * 2);
+  ctx.fillStyle = ink; ctx.fill();
+
+  // Phone heading readout at bottom of canvas
+  if (phoneHdg !== null) {
+    ctx.fillStyle    = ink;
+    ctx.font         = 'bold 15px Times New Roman';
+    ctx.textAlign    = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(Math.round(phoneHdg) + '° (' + dirLbl(phoneHdg) + ')', cx, cy + R * 0.62);
+  }
+}
+
 </script>
 </body>
 </html>
