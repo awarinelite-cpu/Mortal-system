@@ -1183,22 +1183,81 @@ function tick(){
 setInterval(tick,1000);tick();
 
 /* ═══════════════ GPS ═══════════════ */
+// Multi-sample, accuracy-weighted GPS fix.
+// A single getCurrentPosition() read can jump 5-20m on phone GPS (multipath,
+// cold fix, poor HDOP). We instead watch position for a short window, collect
+// several fixes, discard outliers, and take an inverse-variance weighted mean
+// so precise fixes count more than noisy ones. This directly tightens the
+// haversine range/bearing solution, since GUN.lat/lng feed straight into it.
+const GPS_SAMPLE_WINDOW_MS=4000;
+const GPS_MIN_SAMPLES=3;
+const GPS_MAX_SAMPLES=8;
+let gpsWatchId=null;
+
 function retryGPS(){
   setGPSUI('searching');
   if(!navigator.geolocation){setGPSUI('error','GEOLOCATION NOT SUPPORTED');return;}
-  navigator.geolocation.getCurrentPosition(
-    pos=>setGun(pos.coords.latitude,pos.coords.longitude,pos.coords.altitude||0,pos.coords.accuracy),
-    err=>setGPSUI('error','GPS DENIED — USE MANUAL'),
-    {enableHighAccuracy:true,timeout:15000,maximumAge:0}
+  if(gpsWatchId!==null){navigator.geolocation.clearWatch(gpsWatchId);gpsWatchId=null;}
+
+  const samples=[];
+  const deadline=Date.now()+GPS_SAMPLE_WINDOW_MS;
+
+  const finish=()=>{
+    if(gpsWatchId!==null){navigator.geolocation.clearWatch(gpsWatchId);gpsWatchId=null;}
+    if(samples.length===0){setGPSUI('error','GPS DENIED — USE MANUAL');return;}
+    const fixed=averageGPSSamples(samples);
+    setGun(fixed.lat,fixed.lng,fixed.alt,fixed.acc,samples.length);
+  };
+
+  gpsWatchId=navigator.geolocation.watchPosition(
+    pos=>{
+      samples.push({
+        lat:pos.coords.latitude,lng:pos.coords.longitude,
+        alt:pos.coords.altitude||0,acc:pos.coords.accuracy||50
+      });
+      setGPSUI('searching',`SAMPLING ${samples.length}/${GPS_MAX_SAMPLES}...`);
+      if(samples.length>=GPS_MAX_SAMPLES) finish();
+    },
+    err=>{ if(samples.length===0){ setGPSUI('error','GPS DENIED — USE MANUAL'); if(gpsWatchId!==null){navigator.geolocation.clearWatch(gpsWatchId);gpsWatchId=null;} } },
+    {enableHighAccuracy:true,timeout:GPS_SAMPLE_WINDOW_MS,maximumAge:0}
   );
+
+  setTimeout(()=>{ if(samples.length>=GPS_MIN_SAMPLES||samples.length>0) finish(); else finish(); },
+    GPS_SAMPLE_WINDOW_MS-(Date.now()-(deadline-GPS_SAMPLE_WINDOW_MS)));
 }
+
+function averageGPSSamples(samples){
+  if(samples.length===1) return samples[0];
+  // Drop fixes whose reported accuracy is much worse than the best fix —
+  // these are usually a transient bad reading during acquisition.
+  const bestAcc=Math.min(...samples.map(s=>s.acc));
+  const kept=samples.filter(s=>s.acc<=Math.max(bestAcc*3,30));
+  const use=kept.length>0?kept:samples;
+
+  // Inverse-variance weighting: weight ∝ 1/accuracy². A fix reported as
+  // ±5m counts ~16x more than a ±20m fix, which is the statistically
+  // correct way to combine GPS reports of differing quality.
+  let wSum=0,latSum=0,lngSum=0,altSum=0;
+  for(const s of use){
+    const w=1/(s.acc*s.acc);
+    wSum+=w; latSum+=s.lat*w; lngSum+=s.lng*w; altSum+=s.alt*w;
+  }
+  const lat=latSum/wSum, lng=lngSum/wSum, alt=altSum/wSum;
+  // Report combined accuracy as the weighted RMS spread, floored by the
+  // best individual fix — combining samples should never claim to be
+  // *worse* than your best single reading, but should reflect real spread.
+  const spread=Math.sqrt(use.reduce((s,p)=>s+haversine(lat,lng,p.lat,p.lng)**2,0)/use.length);
+  const acc=Math.max(Math.min(...use.map(s=>s.acc)),spread);
+  return{lat,lng,alt,acc};
+}
+
 function setGPSUI(state,msg){
   const dot=document.getElementById('gpsDot'),txt=document.getElementById('gpsTxt'),badge=document.getElementById('gpsbadge');
-  if(state==='searching'){dot.className='dot dot-y';txt.style.color='var(--yel)';txt.textContent='SEARCHING...';badge.textContent='ACQUIRING...';}
+  if(state==='searching'){dot.className='dot dot-y';txt.style.color='var(--yel)';txt.textContent=msg||'SEARCHING...';badge.textContent='ACQUIRING...';}
   else if(state==='locked'){dot.className='dot dot-g';txt.style.color='var(--grn)';txt.textContent='GPS LOCKED';badge.textContent='LOCKED';badge.style.color='var(--grn)';}
   else{dot.className='dot dot-r';txt.style.color='var(--red)';txt.textContent=msg||'GPS ERROR';badge.textContent='NO FIX';badge.style.color='var(--red)';}
 }
-function setGun(lat,lng,alt,acc){
+function setGun(lat,lng,alt,acc,sampleCount){
   GUN={lat,lng,alt:alt||0,acc};
   setGPSUI('locked');
   document.getElementById('gunDisp').style.display='block';
@@ -1207,7 +1266,9 @@ function setGun(lat,lng,alt,acc){
   document.getElementById('dLng').textContent=lng.toFixed(6)+'°';
   document.getElementById('dLatD').textContent=fmtDMS(lat,true);
   document.getElementById('dLngD').textContent=fmtDMS(lng,false);
-  document.getElementById('dAcc').textContent=acc?'±'+acc.toFixed(0)+'m':'manual';
+  document.getElementById('dAcc').textContent=acc
+    ?`±${acc.toFixed(0)}m${sampleCount>1?` (avg of ${sampleCount})`:''}`
+    :'manual';
   document.getElementById('dMGRS').textContent='MGRS: '+latLngToMGRS(lat,lng);
   document.getElementById('altM').value=(alt||0).toFixed(0);
   document.getElementById('mainDot').className='dot dot-g';
