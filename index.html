@@ -706,49 +706,59 @@ let WX_SOURCE='manual';
 const WEAPONS={
   '60':{
     key:'60',label:'M57 60mm MORTAR',ammo:'M73 HE Shell',
-    cal:'60mm',mass:1.35,Cd:0.33,diam:0.060,weight_kg:19.7,sight:'NSB-3',
+    cal:'60mm',mass:1.35,Cd:0.09,diam:0.060,weight_kg:19.7,sight:'NSB-3',
     minEl:45,maxEl:85,dangerClose:200,
     info:'Drop-fired smooth-bore. Yugoslav/Serbian design.',
+    // v0/Cd recalibrated 2026-07: previous v0s were fit with the no-drag
+    // vacuum formula (v0=√(range·g)), then a real drag model was applied
+    // on top -- double-counting air resistance and under-ranging by up to
+    // ~45% at high charges. These values are solved so solveBal's own
+    // drag simulation reproduces the real published max range per charge,
+    // with a single realistic Cd shared across all charges (same shell,
+    // only propellant/v0 changes) and all velocities kept subsonic.
     charges:{
-      'CH 0':{v0:48, min:100, max:300, lbl:'Drop-Fired / Close Assault'},
-      'CH 1':{v0:82, min:300, max:1050,lbl:'Close Support'},
-      'CH 2':{v0:110,min:1050,max:1600,lbl:'Mid-Range Engagement'},
-      'CH 3':{v0:132,min:1600,max:2100,lbl:'Extended Range'},
-      'CH 4':{v0:151,min:2100,max:2540,lbl:'Maximum Effective Range'},
+      'CH 0':{v0:55, min:100, max:300, lbl:'Drop-Fired / Close Assault'},
+      'CH 1':{v0:107,min:300, max:1050,lbl:'Close Support'},
+      'CH 2':{v0:135,min:1050,max:1600,lbl:'Mid-Range Engagement'},
+      'CH 3':{v0:158,min:1600,max:2100,lbl:'Extended Range'},
+      'CH 4':{v0:178,min:2100,max:2540,lbl:'Maximum Effective Range'},
     }
   },
   '81':{
     key:'81',label:'M252 81mm MORTAR',ammo:'M821/M889 HE Shell',
-    cal:'81mm',mass:4.54,Cd:0.34,diam:0.081,weight_kg:41.3,sight:'M64 Sight Unit',
+    cal:'81mm',mass:4.54,Cd:0.08,diam:0.081,weight_kg:41.3,sight:'M64 Sight Unit',
     minEl:45,maxEl:85,dangerClose:300,
     info:'US/NATO standard medium mortar. M252A1 variant.',
+    // v0/Cd recalibrated 2026-07 -- see note on 60mm entry above.
     charges:{
-      'CH 0':{v0:68, min:83,  max:490, lbl:'Charge 0 — Close/Drop'},
-      'CH 1':{v0:103,min:490, max:1095,lbl:'Charge 1 — Short Range'},
-      'CH 2':{v0:128,min:1095,max:1685,lbl:'Charge 2 — Medium Range'},
-      'CH 3':{v0:152,min:1685,max:2495,lbl:'Charge 3 — Long Range'},
-      'CH 4':{v0:175,min:2495,max:3290,lbl:'Charge 4 — Extended Range'},
-      'CH 5':{v0:196,min:3290,max:3854,lbl:'Charge 5 — Maximum Low Angle'},
-      'CH 6':{v0:214,min:3854,max:5608,lbl:'Charge 6 — Maximum Range'},
+      'CH 0':{v0:70, min:83,  max:490, lbl:'Charge 0 — Close/Drop'},
+      'CH 1':{v0:106,min:490, max:1095,lbl:'Charge 1 — Short Range'},
+      'CH 2':{v0:133,min:1095,max:1685,lbl:'Charge 2 — Medium Range'},
+      'CH 3':{v0:165,min:1685,max:2495,lbl:'Charge 3 — Long Range'},
+      'CH 4':{v0:193,min:2495,max:3290,lbl:'Charge 4 — Extended Range'},
+      'CH 5':{v0:211,min:3290,max:3854,lbl:'Charge 5 — Maximum Low Angle'},
+      'CH 6':{v0:265,min:3854,max:5608,lbl:'Charge 6 — Maximum Range'},
     }
   },
   '120':{
     key:'120',label:'M120 120mm MORTAR',ammo:'M934/M931 HE Shell',
-    cal:'120mm',mass:12.9,Cd:0.30,diam:0.120,weight_kg:144.7,sight:'M137A1 Sight',
+    cal:'120mm',mass:12.9,Cd:0.08,diam:0.120,weight_kg:144.7,sight:'M137A1 Sight',
     minEl:45,maxEl:85,dangerClose:600,
     info:'Heavy battalion-level mortar. Vehicle-mountable.',
+    // v0/Cd recalibrated 2026-07 -- see note on 60mm entry above.
     charges:{
-      'CH 0':{v0:85, min:200, max:700, lbl:'Charge 0 — Close Range'},
-      'CH 1':{v0:119,min:700, max:1420,lbl:'Charge 1 — Short Range'},
-      'CH 2':{v0:152,min:1420,max:2300,lbl:'Charge 2 — Medium Range'},
-      'CH 3':{v0:183,min:2300,max:3300,lbl:'Charge 3 — Long Range'},
-      'CH 4':{v0:213,min:3300,max:4400,lbl:'Charge 4 — Extended Range'},
-      'CH 5':{v0:240,min:4400,max:5500,lbl:'Charge 5 — Long Extended'},
-      'CH 6':{v0:265,min:5500,max:7240,lbl:'Charge 6 — Maximum Range'},
+      'CH 0':{v0:84, min:200, max:700, lbl:'Charge 0 — Close Range'},
+      'CH 1':{v0:121,min:700, max:1420,lbl:'Charge 1 — Short Range'},
+      'CH 2':{v0:156,min:1420,max:2300,lbl:'Charge 2 — Medium Range'},
+      'CH 3':{v0:190,min:2300,max:3300,lbl:'Charge 3 — Long Range'},
+      'CH 4':{v0:223,min:3300,max:4400,lbl:'Charge 4 — Extended Range'},
+      'CH 5':{v0:254,min:4400,max:5500,lbl:'Charge 5 — Long Extended'},
+      'CH 6':{v0:300,min:5500,max:7240,lbl:'Charge 6 — Maximum Range'},
     }
   }
 };
 function W(){ return WEAPONS[ACTIVE_WPN]; }
+
 
 /* ═══════════════ DARK MODE ═══════════════ */
 const DM_KEY='mfcs-dark';
