@@ -170,6 +170,18 @@
       return null;
     }
 
+    // Fast decimal-pair parser: "lat, lon" or "lat lon". Returns {lat, lng} or null.
+    function parseLatLon(input) {
+      if (typeof input !== 'string') return null;
+      const match = input.trim().match(/^\s*([+-]?(?:\d+(?:\.\d*)?|\.\d+))\s*[,;\s]\s*([+-]?(?:\d+(?:\.\d*)?|\.\d+))\s*$/);
+      if (!match) return null;
+      const lat = Number(match[1]);
+      const lng = Number(match[2]);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+      if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+      return { lat, lng };
+    }
+
     function degFromDMSString(str) {
       const s = cleanCoordText(str)
         .replace(/°/g, ' ')
@@ -207,6 +219,7 @@
         return parseMGRS(text);
       }
 
+      // combined lat,lng in one string
       const pair = text.split(/[;,]/);
       if (pair.length === 2) {
         const lat = parseCoordinateText(pair[0]);
@@ -305,6 +318,10 @@
     });
 
     function parseGunCoord() {
+      // Fast parse if user pasted a decimal pair into a single field
+      const maybeGunPair = parseLatLon(document.getElementById('gunLat').value || document.getElementById('gunLatText').value || '');
+      if (maybeGunPair) return maybeGunPair;
+
       const mode = document.querySelector('.tab.active[data-target="gun"]').dataset.mode;
       if (mode === 'mgrs') {
         const input = document.getElementById('gunMGRSInput').value;
@@ -326,6 +343,12 @@
 
     // Enhanced: try many inputs & formats for target coordinates so user can paste any supported coord type
     function parseTargetCoord() {
+      // 0) fast decimal pair parser on the primary fields (covers "6.5120, 3.4450" pasted into Lat)
+      const maybePairFromLat = parseLatLon(document.getElementById('tLat').value || '');
+      if (maybePairFromLat) return maybePairFromLat;
+      const maybePairFromLng = parseLatLon(document.getElementById('tLng').value || '');
+      if (maybePairFromLng) return maybePairFromLng;
+
       // 1) explicit MGRS input
       const mgrsInput = cleanCoordText(document.getElementById('tgtMGRSInput').value);
       if (mgrsInput) {
@@ -333,7 +356,7 @@
         if (p && typeof p === 'object' && p.lat !== undefined && p.lng !== undefined) return p;
       }
 
-      // 2) check if user pasted a combined lat,lng into tLat (or tLng)
+      // 2) check if user pasted a combined lat,lng into tLat (or tLng) in non-comma form
       const tLatVal = cleanCoordText(document.getElementById('tLat').value);
       if (tLatVal) {
         const p = parseCoordinateText(tLatVal);
