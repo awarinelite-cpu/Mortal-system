@@ -1,2341 +1,397 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
-<meta name="theme-color" content="#111111" id="themeColorMeta"/>
-<meta name="description" content="Mortar Fire Control System — 60mm, 81mm, 120mm — fully offline PWA"/>
-<meta name="mobile-web-app-capable" content="yes"/>
-<meta name="apple-mobile-web-app-capable" content="yes"/>
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-<meta name="apple-mobile-web-app-title" content="MORTAR FCS"/>
-<link rel="manifest" href="./manifest.json"/>
-<link rel="apple-touch-icon" href="./icon-192.png"/>
-<title>MORTAR FCS v4 — 60mm / 81mm / 120mm</title>
-<style>
-:root {
-  --bg:#f5f5f0;--bg2:#ffffff;--bg3:#eaeae4;
-  --ink:#000000;--ink2:#111111;--ink3:#333333;
-  --dim:#666666;--line:#bbbbbb;
-  --red:#cc0000;--grn:#006600;--yel:#996600;--ora:#bb5500;
-  --font:'Times New Roman',Times,serif;
-  --cbg:#f8f8f4;--iobg:#ffffff;
-  --rok:#f0fff0;--rwarn:#fffae0;--rerr:#fff0f0;--rdng:#fff4ee;
-  --shadow:rgba(0,0,0,.1);
-  --tr:background .2s,color .2s,border-color .2s;
-}
-:root.dark {
-  --bg:#0a0a08;--bg2:#111110;--bg3:#1a1a18;
-  --ink:#d4d4cc;--ink2:#aaaaaa;--ink3:#777777;
-  --dim:#555555;--line:#333333;
-  --red:#cc3333;--grn:#228822;--yel:#887722;--ora:#aa5500;
-  --cbg:#0e0e0c;--iobg:#1a1a18;
-  --rok:#001a00;--rwarn:#1a1500;--rerr:#1a0000;--rdng:#1a0a00;
-  --shadow:rgba(0,0,0,.5);
-}
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-html,body{background:var(--bg);color:var(--ink);font-family:var(--font);font-weight:bold;min-height:100vh;transition:var(--tr);}
-.wrap{max-width:960px;margin:0 auto;padding:14px 12px 90px;}
-
-/* HEADER */
-.hdr{border-bottom:3px solid var(--ink);padding-bottom:10px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:8px;}
-.hdr-l .sys{font-size:9px;letter-spacing:5px;color:var(--ink3);margin-bottom:2px;}
-.hdr-l h1{font-size:22px;letter-spacing:5px;font-weight:900;line-height:1;}
-.hdr-l .sub{font-size:8px;letter-spacing:3px;color:var(--ink3);margin-top:3px;}
-.hdr-r{text-align:right;}
-.clock{font-size:19px;letter-spacing:2px;font-weight:900;}
-.dateln{font-size:9px;color:var(--ink3);letter-spacing:1px;margin-top:2px;}
-.onrow{display:flex;align-items:center;justify-content:flex-end;gap:5px;margin-top:4px;}
-.dot{width:8px;height:8px;border-radius:50%;}
-.dot-g{background:#22aa22;}.dot-r{background:#cc3333;}.dot-y{background:#aa8800;}.dot-off{background:var(--dim);}
-
-/* WEAPON TOGGLE */
-.weapon-toggle-wrap{margin-bottom:14px;}
-.weapon-toggle-header{display:flex;align-items:center;justify-content:space-between;border:3px solid var(--ink);padding:10px 16px;cursor:pointer;background:var(--bg2);transition:var(--tr);user-select:none;}
-.weapon-toggle-header:hover{background:var(--bg3);}
-.weapon-toggle-header-left{display:flex;align-items:center;gap:12px;}
-.weapon-toggle-header-label{font-size:8px;letter-spacing:4px;color:var(--ink3);}
-.weapon-toggle-header-active{font-size:13px;font-weight:900;letter-spacing:2px;color:var(--ink);}
-.weapon-toggle-chevron{font-size:11px;color:var(--ink3);transition:transform .25s;}
-.weapon-toggle-chevron.open{transform:rotate(180deg);}
-.weapon-toggle{display:flex;border:3px solid var(--ink);border-top:none;overflow:hidden;transition:max-height .3s ease,opacity .25s ease;max-height:0;opacity:0;}
-.weapon-toggle.open{max-height:300px;opacity:1;}
-.wtbtn{flex:1;padding:13px 6px;border:none;border-right:1px solid var(--line);background:var(--bg3);color:var(--dim);font-family:var(--font);font-weight:900;cursor:pointer;text-align:center;transition:var(--tr);position:relative;}
-.wtbtn:last-child{border-right:none;}
-.wtbtn:hover{background:var(--bg2);color:var(--ink);}
-.wtbtn.active{background:var(--ink);color:var(--bg);}
-.wtbtn.active::after{content:'ACTIVE';position:absolute;bottom:3px;left:50%;transform:translateX(-50%);font-size:7px;letter-spacing:2px;color:var(--bg);opacity:.7;}
-.wt-cal{font-size:20px;letter-spacing:1px;display:block;}
-.wt-name{font-size:9px;letter-spacing:1px;margin-top:3px;display:block;opacity:.8;}
-.wt-range{font-size:8px;margin-top:2px;display:block;opacity:.6;}
-
-/* SPEC BAR */
-#weaponSpecBar{border:2px solid var(--ink);background:var(--bg2);padding:9px 14px;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:16px;align-items:center;transition:var(--tr);}
-.wsb-name{font-size:11px;letter-spacing:3px;font-weight:900;}
-.wsb-stats{display:flex;gap:18px;flex-wrap:wrap;font-size:9px;letter-spacing:2px;color:var(--ink3);}
-.wsb-stats strong{color:var(--ink);}
-
-/* READY STRIP */
-.rstrip{display:flex;border:2px solid var(--ink);margin-bottom:14px;}
-.ri{flex:1;padding:6px 10px;border-right:1px solid var(--line);display:flex;align-items:center;gap:6px;font-size:9px;letter-spacing:2px;color:var(--dim);}
-.ri:last-child{border-right:none;}
-.ri.ok{color:var(--grn);}.ri.ok .dot{background:var(--grn);}
-.ri.fail{color:var(--dim);}
-.ri.warn{color:var(--yel);}.ri.warn .dot{background:var(--yel);}
-.ri.danger{color:var(--red);}.ri.danger .dot{background:var(--red);}
-
-/* CHARGE STRIP */
-.cstrip{display:grid;border:2px solid var(--ink);margin-bottom:14px;position:relative;transition:var(--tr);}
-.cstrip-label{position:absolute;top:-11px;left:12px;font-size:8px;letter-spacing:3px;color:var(--ink3);background:var(--bg);padding:0 6px;}
-.cbtn{padding:11px 4px;border:none;border-right:1px solid var(--line);background:var(--bg3);color:var(--dim);font-family:var(--font);font-weight:bold;cursor:pointer;text-align:center;transition:var(--tr);position:relative;}
-.cbtn:last-child{border-right:none;}
-.cbtn:hover{background:var(--bg2);color:var(--ink);}
-.cbtn.sel{background:var(--ink);color:var(--bg);}
-.cbtn.sel::after{content:'▲';position:absolute;bottom:3px;left:50%;transform:translateX(-50%);font-size:7px;color:var(--bg);}
-.cbtn.in-range{background:var(--rok);}
-.cbtn.out-range{opacity:.4;}
-.cbtn .cn{font-size:11px;letter-spacing:1px;font-weight:900;}
-.cbtn .cv{font-size:8px;margin-top:2px;}
-.cbtn .cm{font-size:8px;margin-top:1px;}
-
-/* PANELS */
-.panel{border:1px solid var(--line);background:var(--bg2);padding:14px;margin-bottom:14px;transition:var(--tr);}
-.ptitle{font-size:9px;letter-spacing:4px;color:var(--ink3);margin-bottom:12px;padding-bottom:7px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;}
-.ptitle span{color:var(--ink2);}
-
-/* INPUTS */
-.field{margin-bottom:10px;}.field:last-child{margin-bottom:0;}
-.flbl{display:block;font-size:8px;letter-spacing:3px;color:var(--ink3);margin-bottom:4px;}
-input,select{width:100%;background:var(--iobg);border:1px solid var(--line);border-bottom:2px solid var(--ink3);color:var(--ink);padding:9px 10px;font-size:14px;font-family:var(--font);font-weight:bold;outline:none;-webkit-appearance:none;appearance:none;transition:var(--tr);}
-input:focus,select:focus{border-color:var(--ink);box-shadow:0 2px 6px var(--shadow);}
-input::placeholder{color:var(--dim);font-style:italic;font-weight:normal;}
-input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;}
-select option{background:var(--iobg);color:var(--ink);}
-
-/* COORD MODE TABS */
-.coord-tabs{display:flex;gap:0;margin-bottom:10px;}
-.coord-tab{padding:5px 14px;border:1px solid var(--line);background:var(--bg3);color:var(--dim);font-family:var(--font);font-size:8px;letter-spacing:2px;cursor:pointer;transition:var(--tr);}
-.coord-tab.active{background:var(--ink);color:var(--bg);border-color:var(--ink);}
-.coord-tab:first-child{border-radius:2px 0 0 2px;}
-.coord-tab:last-child{border-radius:0 2px 2px 0;}
-
-/* GRIDS */
-.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
-.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
-
-/* BUTTONS */
-.btn{background:none;border:1px solid var(--line);color:var(--ink3);font-family:var(--font);font-weight:bold;font-size:9px;letter-spacing:2px;padding:5px 12px;cursor:pointer;transition:var(--tr);}
-.btn:hover{background:var(--bg3);color:var(--ink);border-color:var(--ink3);}
-.btn-sm{font-size:8px;letter-spacing:1px;padding:4px 9px;}
-.fire-btn{width:100%;padding:15px;font-size:14px;letter-spacing:8px;background:var(--ink);border:none;color:var(--bg);font-family:var(--font);font-weight:900;cursor:pointer;transition:var(--tr);margin-bottom:14px;position:relative;overflow:hidden;}
-.fire-btn::before{content:'';position:absolute;top:0;left:-100%;width:100%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.08),transparent);transition:left .4s;}
-.fire-btn:hover::before{left:100%;}
-.fire-btn:hover{background:var(--ink3);}
-.fire-btn:disabled{background:var(--bg3);color:var(--dim);cursor:not-allowed;}
-
-/* RANGE BOX */
-.range-box{padding:10px 14px;font-size:10px;letter-spacing:1px;line-height:1.6;font-weight:bold;border-left:5px solid var(--line);background:var(--bg2);border:1px solid var(--line);border-left-width:5px;margin-bottom:12px;transition:var(--tr);}
-.range-ok{border-left-color:var(--grn);background:var(--rok);color:var(--grn);}
-.range-warn{border-left-color:var(--yel);background:var(--rwarn);color:var(--yel);}
-.range-err{border-left-color:var(--red);background:var(--rerr);color:var(--red);}
-.rb-status{font-size:11px;font-weight:900;letter-spacing:3px;}
-.warn-ok{border:1px solid var(--grn);background:var(--rok);color:var(--grn);font-size:10px;letter-spacing:1px;padding:9px 14px;margin-bottom:12px;font-weight:bold;}
-.warn-err{border:2px solid var(--red);background:var(--rerr);color:var(--red);font-size:10px;letter-spacing:1px;padding:9px 14px;margin-bottom:12px;font-weight:bold;}
-
-/* DANGER CLOSE BOX */
-.danger-close-box{border:3px solid var(--red);background:var(--rerr);color:var(--red);padding:12px 16px;margin-bottom:14px;display:none;}
-.danger-close-box.show{display:block;}
-.dcb-title{font-size:13px;font-weight:900;letter-spacing:5px;margin-bottom:6px;}
-.dcb-body{font-size:10px;letter-spacing:1px;line-height:1.7;}
-
-/* ANGLE MODE SELECTOR */
-.angle-mode-row{display:flex;gap:8px;margin-bottom:12px;}
-.angle-mode-btn{padding:7px 18px;border:2px solid var(--line);background:var(--bg3);color:var(--dim);font-family:var(--font);font-weight:900;font-size:9px;letter-spacing:2px;cursor:pointer;transition:var(--tr);}
-.angle-mode-btn.active{background:var(--ink);color:var(--bg);border-color:var(--ink);}
-.angle-mode-btn:hover:not(.active){background:var(--bg2);color:var(--ink);}
-
-/* BARREL BOARD */
-.barrel-board{border:3px solid var(--ink);background:var(--bg2);margin-bottom:14px;overflow:hidden;transition:var(--tr);}
-.bb-header{background:var(--ink);color:var(--bg);padding:10px 18px;font-size:10px;letter-spacing:6px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;}
-.bb-header .bbtime{font-size:9px;opacity:.7;}
-.bb-header .bbexport{font-size:8px;letter-spacing:2px;padding:4px 10px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.08);color:var(--bg);cursor:pointer;font-family:var(--font);font-weight:900;}
-.bb-header .bbexport:hover{background:rgba(255,255,255,.15);}
-.bb-main{display:grid;grid-template-columns:1fr 1fr;border-bottom:2px solid var(--ink);}
-.bb-main.three-col{grid-template-columns:1fr 1fr 1fr;}
-.bb-cell{padding:20px 18px;border-right:2px solid var(--ink);text-align:center;}
-.bb-cell:last-child{border-right:none;}
-.bb-cell .bblbl{font-size:9px;letter-spacing:5px;color:var(--ink3);margin-bottom:8px;display:block;}
-.bb-cell .bbval{font-size:54px;font-weight:900;color:var(--ink);line-height:1;letter-spacing:-1px;}
-.bb-cell .bbval.red{color:var(--red);}
-.bb-cell .bbval.grn{color:var(--grn);}
-.bb-cell .bbval.ora{color:var(--ora);}
-.bb-cell .bbunit{font-size:13px;color:var(--ink3);margin-top:5px;letter-spacing:3px;}
-.bb-cell .bbsub{font-size:11px;color:var(--ink2);margin-top:7px;letter-spacing:2px;border-top:1px solid var(--line);padding-top:7px;}
-.bb-sub{display:grid;grid-template-columns:repeat(5,1fr);border-bottom:1px solid var(--line);}
-.bb-sub-cell{padding:11px 12px;border-right:1px solid var(--line);text-align:center;}
-.bb-sub-cell:last-child{border-right:none;}
-.bb-sub-cell .bslbl{font-size:8px;letter-spacing:3px;color:var(--dim);margin-bottom:4px;}
-.bb-sub-cell .bsval{font-size:16px;font-weight:900;color:var(--ink);}
-.bb-sub-cell .bsval.red{color:var(--red);}.bb-sub-cell .bsval.grn{color:var(--grn);}
-.bb-crew{padding:13px 18px;background:var(--cbg);transition:var(--tr);}
-.bb-crew .bccap{font-size:9px;letter-spacing:4px;color:var(--ink3);margin-bottom:9px;}
-.crew-inline{display:flex;flex-wrap:wrap;gap:9px;}
-.csi{display:flex;align-items:flex-start;gap:8px;flex:1;min-width:190px;padding:8px 10px;border:1px solid var(--line);background:var(--bg2);transition:var(--tr);}
-.csi-num{width:22px;height:22px;border-radius:50%;border:2px solid var(--ink);display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0;font-weight:900;}
-.csi-num.active{background:var(--ink);color:var(--bg);}
-.csi-txt{font-size:11px;color:var(--ink2);line-height:1.5;padding-top:2px;}
-.csi-txt strong{color:var(--red);font-weight:900;}
-.csi-warn{border:1px solid var(--red);background:var(--rerr);}
-.csi-warn .csi-num{border-color:var(--red);color:var(--red);font-size:13px;}
-.csi-warn .csi-txt{color:var(--red);}
-.csi-danger{border:2px solid var(--red);background:var(--rerr);animation:blink 1s infinite;}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:.5}}
-
-/* DATA BOXES */
-.dbox{border:1px solid var(--line);background:var(--cbg);padding:10px 12px;transition:var(--tr);}
-.dbox .dk{font-size:8px;letter-spacing:3px;color:var(--dim);margin-bottom:5px;}
-.dbox .dv{font-size:17px;font-weight:900;color:var(--ink);}
-.dbox .dv.big{font-size:21px;}.dbox .dv.red{color:var(--red);}.dbox .dv.grn{color:var(--grn);}
-.dbox .du{font-size:9px;opacity:.6;margin-left:2px;}
-
-/* ERR */
-.err{border:1px solid var(--red);background:var(--rerr);color:var(--red);font-size:9px;letter-spacing:2px;padding:9px 12px;margin-bottom:10px;}
-
-/* MUZZLE PANEL */
-.muz-panel{border:2px solid var(--ink);background:var(--bg2);padding:14px;margin-bottom:14px;position:relative;transition:var(--tr);}
-.muz-panel-title{font-size:9px;letter-spacing:4px;color:var(--ink3);margin-bottom:12px;padding-bottom:7px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;}
-.muz-display{display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding:10px 14px;border:1px solid var(--line);background:var(--cbg);margin-top:10px;}
-.muz-val{font-size:32px;font-weight:900;color:var(--ink);letter-spacing:-1px;}
-.muz-val.not-set{color:var(--dim);font-size:20px;}
-.muz-sub{font-size:10px;color:var(--ink3);letter-spacing:2px;margin-top:3px;}
-.muz-badge{font-size:8px;letter-spacing:3px;padding:3px 8px;border:1px solid;font-weight:900;}
-.muz-badge.auto{color:var(--grn);border-color:var(--grn);background:var(--rok);}
-.muz-badge.manual{color:var(--yel);border-color:var(--yel);background:var(--rwarn);}
-.muz-badge.none{color:var(--dim);border-color:var(--dim);}
-
-/* HISTORY */
-.hrow{display:grid;grid-template-columns:65px 1fr 1fr 1fr 1fr 60px;gap:6px;padding:7px 10px;border:1px solid var(--line);margin-bottom:5px;cursor:pointer;transition:var(--tr);}
-.hrow:hover{background:var(--bg3);}
-.hrow.latest{background:var(--bg3);border-color:var(--ink3);}
-.hk{font-size:7px;letter-spacing:2px;color:var(--dim);}
-.hv{font-size:10px;margin-top:2px;color:var(--ink);}
-.hrow .danger-flag{font-size:8px;color:var(--red);letter-spacing:1px;}
-
-/* SEP */
-.sep{text-align:center;font-size:9px;letter-spacing:6px;color:var(--ink3);padding:8px 0 10px;border-top:1px solid var(--line);margin-bottom:6px;}
-
-/* DUAL SOLUTION */
-.dual-sol{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
-.sol-card{border:2px solid var(--ink);background:var(--bg2);padding:12px 16px;cursor:pointer;transition:var(--tr);}
-.sol-card.active{background:var(--ink);color:var(--bg);}
-.sol-card:hover:not(.active){background:var(--bg3);}
-.sol-card-label{font-size:8px;letter-spacing:4px;margin-bottom:8px;opacity:.7;}
-.sol-card-angle{font-size:36px;font-weight:900;line-height:1;}
-.sol-card-sub{font-size:9px;letter-spacing:2px;margin-top:6px;opacity:.8;}
-
-/* CANVAS */
-canvas{display:block;}
-#compassCanvas{border:2px solid var(--line);}
-#elevCanvas{width:100%;border:1px solid var(--line);}
-#mapCanvas{width:100%;border:1px solid var(--line);}
-:root.dark canvas{filter:brightness(.85) contrast(1.1);}
-
-/* DARK TOGGLE */
-.dm-toggle{position:fixed;bottom:16px;right:16px;z-index:9999;background:var(--ink);color:var(--bg);border:2px solid var(--ink3);font-family:var(--font);font-weight:900;font-size:10px;letter-spacing:2px;padding:9px 13px;cursor:pointer;transition:var(--tr);box-shadow:0 2px 12px var(--shadow);}
-.dm-toggle:hover{background:var(--ink3);}
-
-/* INSTALL BANNER */
-#installBanner{display:none;background:var(--ink);color:var(--bg);padding:12px 16px;margin-bottom:12px;font-size:10px;letter-spacing:2px;align-items:center;justify-content:space-between;gap:10px;border:2px solid var(--ink3);}
-#installBanner.show{display:flex;}
-.inst-btn{background:var(--bg);color:var(--ink);border:none;font-family:var(--font);font-weight:900;font-size:9px;letter-spacing:3px;padding:7px 13px;cursor:pointer;flex-shrink:0;}
-.inst-x{background:none;border:none;color:var(--ink3);font-size:16px;cursor:pointer;padding:0 4px;line-height:1;flex-shrink:0;}
-
-/* OFFLINE BADGE */
-#offlineBadge{display:none;background:#881100;color:#ffcccc;padding:6px 12px;font-size:8px;letter-spacing:4px;text-align:center;margin-bottom:10px;}
-#offlineBadge.show{display:block;}
-
-/* GPS ROW */
-.gps-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;}
-
-/* TOAST */
-.toast{position:fixed;bottom:70px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 20px;font-size:9px;letter-spacing:3px;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none;}
-.toast.show{opacity:1;}
-
-/* ANIMATIONS */
-@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-.fadein{animation:fadeIn .4s ease;}
-@keyframes flashIn{0%{background:#fffbe0}100%{background:var(--bg2)}}
-@keyframes flashInDark{0%{background:#332b00}100%{background:var(--bg2)}}
-.flash{animation:flashIn .6s ease;}
-:root.dark .flash{animation:flashInDark .6s ease;}
-
-/* RESPONSIVE */
-@media(max-width:620px){
-  .hdr{flex-direction:column;align-items:flex-start;}
-  .weapon-toggle{flex-direction:column;}
-  .wtbtn{border-right:none;border-bottom:1px solid var(--line);}
-  .wtbtn:last-child{border-bottom:none;}
-  .cstrip{grid-template-columns:repeat(3,1fr)!important;}
-  .cbtn:nth-child(4),.cbtn:nth-child(5),.cbtn:nth-child(6){border-top:1px solid var(--line);}
-  .bb-main{grid-template-columns:1fr!important;}
-  .bb-cell{border-right:none;border-bottom:2px solid var(--ink);}
-  .bb-cell:last-child{border-bottom:none;}
-  .bb-cell .bbval{font-size:42px;}
-  .bb-sub{grid-template-columns:1fr 1fr;}
-  .g2,.g3,.g4{grid-template-columns:1fr 1fr;}
-  .hrow{grid-template-columns:1fr 1fr;}
-  .dual-sol{grid-template-columns:1fr;}
-}
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mortal System — Coordinate Input Parser</title>
+  <style>
+    :root {
+      --bg:#f5f5f0; --panel:#fff; --ink:#111; --muted:#555; --line:#d7d1c7; --accent:#111; --danger:#b11; --ok:#0a7a0a; --warn:#9a6a00;
+    }
+    * { box-sizing:border-box; }
+    body {
+      margin:0; font-family:Georgia, serif; background:var(--bg); color:var(--ink);
+      padding:20px;
+    }
+    .wrap { max-width:900px; margin:0 auto; }
+    .panel { background:var(--panel); border:2px solid var(--line); padding:18px; margin-bottom:18px; }
+    .title { font-size:12px; letter-spacing:4px; text-transform:uppercase; margin-bottom:12px; color:var(--muted); }
+    .grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+    .field { margin-bottom:12px; }
+    label { display:block; font-size:10px; letter-spacing:3px; text-transform:uppercase; color:var(--muted); margin-bottom:8px; }
+    input, button { font:inherit; }
+    input {
+      width:100%; border:1px solid var(--line); background:#fff; padding:10px 12px; color:var(--ink);
+      border-bottom:2px solid var(--muted); font-size:16px;
+    }
+    input:focus { border-color:var(--accent); outline:none; }
+    .tabs { display:flex; gap:8px; margin-bottom:12px; }
+    .tab { border:1px solid var(--line); background:#f2f1ec; color:var(--muted); padding:8px 14px; cursor:pointer; }
+    .tab.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+    .row { display:flex; gap:10px; align-items:flex-end; }
+    .btn {
+      border:1px solid var(--line); background:#f7f5f1; color:var(--ink); padding:10px 14px; cursor:pointer; font-weight:700;
+    }
+    .btn.primary { background:var(--accent); color:#fff; border-color:var(--accent); }
+    .status {
+      margin-top:10px; padding:9px 12px; font-size:11px; letter-spacing:2px; text-transform:uppercase; border:1px solid var(--line); background:#f2f1ec;
+    }
+    .status.ok { border-color:var(--ok); background:rgba(10,122,10,0.08); color:var(--ok); }
+    .status.err { border-color:var(--danger); background:rgba(177,17,17,0.08); color:var(--danger); }
+    .out { margin-top:14px; background:#faf8f4; border:1px solid var(--line); padding:12px; }
+    .out strong { font-size:11px; letter-spacing:3px; text-transform:uppercase; color:var(--muted); }
+    .out .coord { font-size:22px; margin-top:8px; }
+    .muted { color:var(--muted); }
+    @media (max-width: 700px) { .grid { grid-template-columns:1fr; } }
+  </style>
 </head>
 <body>
-<button class="dm-toggle" id="dmToggle" onclick="toggleDark()">&#9680; DARK</button>
-<div class="toast" id="toast"></div>
-
-<div class="wrap">
-
-<div id="installBanner">
-  <span>&#11015; INSTALL MORTAR FCS — WORKS FULLY OFFLINE</span>
-  <button class="inst-btn" onclick="doInstall()">INSTALL</button>
-  <button class="inst-x" onclick="dismissInstall()">&#10005;</button>
-</div>
-<div id="offlineBadge">&#9888; OFFLINE MODE — ALL CALCULATIONS LOCAL</div>
-
-<!-- HEADER -->
-<div class="hdr">
-  <div class="hdr-l">
-    <div class="sys">MORTAR FIRE CONTROL SYSTEM v4 · OFFLINE PWA · ENHANCED BALLISTICS</div>
-    <h1>BARREL CONTROL</h1>
-    <div class="sub" id="headerSub">60mm · 81mm · 120mm · CORIOLIS · TEMP CORRECTION · DANGER CLOSE · MGRS</div>
-  </div>
-  <div class="hdr-r">
-    <div class="clock" id="clock">--:--:-- UTC</div>
-    <div class="dateln" id="dateln">-- --- ----</div>
-    <div class="onrow">
-      <div class="dot dot-off" id="mainDot"></div>
-      <span style="font-size:8px;letter-spacing:2px;color:var(--ink3);" id="mainTxt">INITIALISING</span>
-    </div>
-  </div>
-</div>
-
-<!-- WEAPON TOGGLE -->
-<div class="weapon-toggle-wrap">
-  <div class="weapon-toggle-header" id="weaponToggleHeader" onclick="toggleWeaponPanel()">
-    <div class="weapon-toggle-header-left">
-      <span class="weapon-toggle-header-label">SELECT WEAPON SYSTEM</span>
-      <span class="weapon-toggle-header-active" id="weaponHeaderActive">60mm · M57 MORTAR</span>
-    </div>
-    <span class="weapon-toggle-chevron" id="weaponChevron">&#9660;</span>
-  </div>
-  <div class="weapon-toggle" id="weaponToggle">
-    <button class="wtbtn active" id="wt-60" onclick="selectWeapon('60')">
-      <span class="wt-cal">60mm</span><span class="wt-name">M57 MORTAR</span><span class="wt-range">100 – 2,540m</span>
-    </button>
-    <button class="wtbtn" id="wt-81" onclick="selectWeapon('81')">
-      <span class="wt-cal">81mm</span><span class="wt-name">M252 MORTAR</span><span class="wt-range">83 – 5,608m</span>
-    </button>
-    <button class="wtbtn" id="wt-120" onclick="selectWeapon('120')">
-      <span class="wt-cal">120mm</span><span class="wt-name">M120 MORTAR</span><span class="wt-range">200 – 7,240m</span>
-    </button>
-  </div>
-</div>
-
-<!-- SPEC BAR -->
-<div id="weaponSpecBar">
-  <div class="wsb-name" id="wsbName">M57 60mm</div>
-  <div class="wsb-stats" id="wsbStats"></div>
-</div>
-
-<!-- CHARGE STRIP -->
-<div class="cstrip" id="cstrip"><div class="cstrip-label" id="cstripLabel">CHARGE SELECTION</div></div>
-
-<!-- READINESS -->
-<div class="rstrip">
-  <div class="ri" id="ri-gps"><div class="dot dot-off"></div>GPS</div>
-  <div class="ri" id="ri-tgt"><div class="dot dot-off"></div>TARGET</div>
-  <div class="ri" id="ri-chg"><div class="dot dot-off"></div>CHARGE</div>
-  <div class="ri" id="ri-sol"><div class="dot dot-off"></div>SOLUTION</div>
-  <div class="ri" id="ri-dc"><div class="dot dot-off"></div>SAFE</div>
-</div>
-
-<!-- INPUT GRID -->
-<div class="g2" style="margin-bottom:14px;gap:14px;">
-
-  <!-- GUN POSITION -->
-  <div class="panel" style="margin-bottom:0;">
-    <div class="ptitle">&#9679; GUN POSITION <span id="gpsbadge">ACQUIRING...</span></div>
-    <div class="gps-row">
-      <div class="dot dot-y" id="gpsDot"></div>
-      <span id="gpsTxt" style="font-size:9px;letter-spacing:2px;color:var(--yel);">SEARCHING FOR GPS</span>
-      <button class="btn" onclick="retryGPS()">RETRY</button>
-      <button class="btn" onclick="toggleManGPS()">MANUAL</button>
-    </div>
-    <div id="manGPS" style="display:none;">
-      <div class="coord-tabs" style="margin-bottom:10px;">
-        <button class="coord-tab active" id="gunTabDD" onclick="setGunCoordMode('dd')">DEC DEG</button>
-        <button class="coord-tab" id="gunTabMGRS" onclick="setGunCoordMode('mgrs')">MGRS</button>
+  <div class="wrap">
+    <div class="panel">
+      <div class="title">Coordinate parser</div>
+      <div class="tabs">
+        <button class="tab active" data-mode="dd" data-target="gun">Decimal degrees</button>
+        <button class="tab" data-mode="dms" data-target="gun">DMS / DMM</button>
+        <button class="tab" data-mode="mgrs" data-target="gun">MGRS</button>
       </div>
-      <div id="gunDD">
-        <div class="g2" style="margin-bottom:8px;">
-          <div class="field"><label class="flbl">GUN LATITUDE</label><input type="number" id="gunLat" step="any" placeholder="e.g. 6.4541"/></div>
-          <div class="field"><label class="flbl">GUN LONGITUDE</label><input type="number" id="gunLng" step="any" placeholder="e.g. 3.3947"/></div>
+      <div class="grid">
+        <div>
+          <div class="panel" style="margin:0;">
+            <div class="title">Gun position</div>
+            <div id="gunDD" class="field-wrap">
+              <div class="field">
+                <label for="gunLat">Latitude</label>
+                <input id="gunLat" type="text" placeholder="e.g. 6.4541 or 6°27'16.4\"N" value="6.4541" />
+              </div>
+              <div class="field">
+                <label for="gunLng">Longitude</label>
+                <input id="gunLng" type="text" placeholder="e.g. 3.3947 or 3°23'40.9\"E" value="3.3947" />
+              </div>
+            </div>
+            <div id="gunDMS" class="field-wrap" style="display:none;">
+              <div class="field">
+                <label for="gunLatText">Latitude string</label>
+                <input id="gunLatText" type="text" placeholder="6°27'16.4\"N" value="6°27'16.4\"N" />
+              </div>
+              <div class="field">
+                <label for="gunLngText">Longitude string</label>
+                <input id="gunLngText" type="text" placeholder="3°23'40.9\"E" value="3°23'40.9\"E" />
+              </div>
+            </div>
+            <div id="gunMGRS" class="field-wrap" style="display:none;">
+              <div class="field">
+                <label for="gunMGRSInput">MGRS grid</label>
+                <input id="gunMGRSInput" type="text" placeholder="32PNT1234567890" value="32PNT1234567890" />
+              </div>
+            </div>
+            <div class="row">
+              <button class="btn primary" onclick="applyManGPS()">Set gun</button>
+              <button class="btn" onclick="clearGun()">Clear</button>
+            </div>
+            <div id="gunStatus" class="status">Awaiting GPS</div>
+          </div>
+        </div>
+
+        <div>
+          <div class="panel" style="margin:0;">
+            <div class="title">Target coordinates</div>
+            <div class="tabs" style="margin-bottom:10px;">
+              <button class="tab active" data-mode="dd" data-target="tgt">Decimal</button>
+              <button class="tab" data-mode="dms" data-target="tgt">DMS / DMM</button>
+              <button class="tab" data-mode="mgrs" data-target="tgt">MGRS</button>
+            </div>
+            <div id="tgtDD" class="field-wrap">
+              <div class="field">
+                <label for="tLat">Latitude</label>
+                <input id="tLat" type="text" placeholder="e.g. 6.5120" value="6.5120" />
+              </div>
+              <div class="field">
+                <label for="tLng">Longitude</label>
+                <input id="tLng" type="text" placeholder="e.g. 3.4450" value="3.4450" />
+              </div>
+            </div>
+            <div id="tgtDMS" class="field-wrap" style="display:none;">
+              <div class="field">
+                <label for="tLatText">Latitude string</label>
+                <input id="tLatText" type="text" placeholder="6°30'43.2\"N" value="6°30'43.2\"N" />
+              </div>
+              <div class="field">
+                <label for="tLngText">Longitude string</label>
+                <input id="tLngText" type="text" placeholder="3°26'42.0\"E" value="3°26'42.0\"E" />
+              </div>
+            </div>
+            <div id="tgtMGRS" class="field-wrap" style="display:none;">
+              <div class="field">
+                <label for="tgtMGRSInput">MGRS grid</label>
+                <input id="tgtMGRSInput" type="text" placeholder="32PNT1234567890" value="32PNT1234567890" />
+              </div>
+            </div>
+            <div class="field">
+              <label for="tElev">Height diff (m)</label>
+              <input id="tElev" type="number" value="0" step="any" />
+            </div>
+            <div class="row">
+              <button class="btn primary" onclick="applyTarget()">Set target</button>
+              <button class="btn" onclick="clearTarget()">Clear</button>
+            </div>
+            <div id="tgtStatus" class="status">Awaiting target</div>
+          </div>
         </div>
       </div>
-      <div id="gunMGRS" style="display:none;">
-        <div class="field" style="margin-bottom:8px;"><label class="flbl">GUN MGRS GRID</label><input type="text" id="gunMGRSInput" placeholder="e.g. 32PNT1234567890" oninput="this.value=this.value.toUpperCase()"/></div>
-      </div>
-      <div class="g2">
-        <div class="field"><label class="flbl">ALTITUDE (m ASL)</label><input type="number" id="gunAlt" step="1" placeholder="0"/></div>
-        <div style="display:flex;align-items:flex-end;gap:7px;">
-          <button class="btn" style="flex:1;padding:9px;" onclick="applyManGPS()">SET</button>
-          <button class="btn" onclick="toggleManGPS()">&#10005;</button>
-        </div>
-      </div>
-    </div>
-    <div id="gunDisp" style="display:none;">
-      <div class="g3">
-        <div><div class="dk" style="font-size:7px;letter-spacing:2px;color:var(--dim);margin-bottom:3px;">LATITUDE</div>
-          <div style="font-size:13px;" id="dLat">-</div><div style="font-size:8px;color:var(--dim);" id="dLatD">-</div></div>
-        <div><div class="dk" style="font-size:7px;letter-spacing:2px;color:var(--dim);margin-bottom:3px;">LONGITUDE</div>
-          <div style="font-size:13px;" id="dLng">-</div><div style="font-size:8px;color:var(--dim);" id="dLngD">-</div></div>
-        <div><div class="dk" style="font-size:7px;letter-spacing:2px;color:var(--dim);margin-bottom:3px;">ACCURACY</div>
-          <div style="font-size:13px;" id="dAcc">-</div></div>
-      </div>
-      <div style="margin-top:6px;font-size:8px;letter-spacing:2px;color:var(--dim);" id="dMGRS">-</div>
-      <div style="margin-top:8px;display:flex;gap:7px;">
-        <button class="btn" onclick="retryGPS()">RE-DETECT</button>
-        <button class="btn" onclick="toggleManGPS()">EDIT</button>
+
+      <div class="out">
+        <strong>Normalized output</strong>
+        <div class="coord" id="coordOut">Gun: --<br />Target: --</div>
       </div>
     </div>
   </div>
 
-  <!-- TARGET -->
-  <div class="panel" style="margin-bottom:0;">
-    <div class="ptitle">&#9678; TARGET COORDINATES</div>
-    <div class="coord-tabs">
-      <button class="coord-tab active" id="tgtTabDD" onclick="setTgtCoordMode('dd')">DEC DEG</button>
-      <button class="coord-tab" id="tgtTabMGRS" onclick="setTgtCoordMode('mgrs')">MGRS</button>
-    </div>
-    <div id="tgtDD">
-      <div class="field"><label class="flbl">TARGET LATITUDE</label>
-        <input type="number" id="tLat" step="any" placeholder="e.g. 6.5120" oninput="autoCalc()"/></div>
-      <div class="field"><label class="flbl">TARGET LONGITUDE</label>
-        <input type="number" id="tLng" step="any" placeholder="e.g. 3.4450" oninput="autoCalc()"/></div>
-    </div>
-    <div id="tgtMGRS" style="display:none;">
-      <div class="field"><label class="flbl">TARGET MGRS GRID</label>
-        <input type="text" id="tgtMGRSInput" placeholder="e.g. 32PNT1234567890" oninput="this.value=this.value.toUpperCase();mgrsTargetChange()"/></div>
-    </div>
-    <div class="field"><label class="flbl">HEIGHT DIFF (m) <span style="color:var(--dim);font-weight:normal;">+ above / - below gun</span></label>
-      <input type="number" id="tElev" step="any" placeholder="0" oninput="autoCalc()"/></div>
-    <div class="field"><label class="flbl">FRIENDLY FORCE DISTANCE (m) <span style="color:var(--red);font-size:7px;">DANGER CLOSE CHECK</span></label>
-      <input type="number" id="friendlyDist" step="1" placeholder="0 = disable" oninput="autoCalc()"/></div>
-  </div>
-</div>
+  <script>
+    const DEG = (rad) => rad * 180 / Math.PI;
+    const RAD = (deg) => deg * Math.PI / 180;
 
-<!-- MUZZLE BEARING -->
-<div class="muz-panel" id="muzPanel">
-  <div class="muz-panel-title">
-    &#9654; GUN MUZZLE BEARING (CURRENT BARREL DIRECTION)
-    <span style="font-size:8px;color:var(--dim);font-weight:normal;">Enables relative traverse output</span>
-  </div>
-  <div class="gps-row">
-    <div class="dot dot-off" id="muzDot"></div>
-    <span id="muzTxt" style="font-size:9px;letter-spacing:2px;color:var(--dim);">BEARING NOT SET</span>
-    <button class="btn" onclick="retryCompass()">COMPASS</button>
-    <button class="btn" onclick="toggleManMuz()">MANUAL</button>
-    <button class="btn" onclick="clearMuzBearing()" id="muzClearBtn" style="display:none;">CLEAR</button>
-  </div>
-  <div id="manMuz" style="display:none;">
-    <div class="g2" style="margin-bottom:8px;max-width:420px;">
-      <div class="field"><label class="flbl">MUZZLE BEARING (0–360°)</label>
-        <input type="number" id="muzManInput" step="0.1" min="0" max="360" placeholder="e.g. 185.5" oninput="onMuzManInput()"/></div>
-      <div style="display:flex;align-items:flex-end;gap:7px;">
-        <button class="btn" style="flex:1;padding:9px;" onclick="applyMuzManual()">SET BEARING</button>
-        <button class="btn" onclick="toggleManMuz()">&#10005;</button>
-      </div>
-    </div>
-  </div>
-  <div id="muzDisp" style="display:none;">
-    <div class="g2" style="max-width:420px;">
-      <div><div class="dk" style="font-size:7px;letter-spacing:2px;color:var(--dim);margin-bottom:3px;">MUZZLE BEARING</div>
-        <div style="font-size:22px;font-weight:900;" id="muzDispVal">-</div>
-        <div style="font-size:8px;color:var(--dim);" id="muzDispDir">-</div></div>
-      <div><div class="dk" style="font-size:7px;letter-spacing:2px;color:var(--dim);margin-bottom:3px;">SOURCE</div>
-        <div style="font-size:13px;" id="muzDispSrc">-</div></div>
-    </div>
-    <div style="margin-top:8px;display:flex;gap:7px;">
-      <button class="btn" onclick="retryCompass()">RE-DETECT</button>
-      <button class="btn" onclick="toggleManMuz()">EDIT</button>
-      <button class="btn" onclick="clearMuzBearing()">CLEAR</button>
-    </div>
-  </div>
-  <div class="muz-display" id="muzDisplay" style="margin-top:10px;">
-    <div><div class="muz-val not-set" id="muzVal">NOT SET</div>
-      <div class="muz-sub" id="muzSub">Relative traverse not available.</div></div>
-    <div><div class="muz-badge none" id="muzBadge">NO REFERENCE</div></div>
-  </div>
-</div>
-
-<!-- CONDITIONS -->
-<div class="panel">
-  <div class="ptitle">&#9728; FIRING CONDITIONS
-    <span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-      <span id="wxStatusBadge" style="font-size:8px;letter-spacing:2px;padding:3px 8px;border:1px solid var(--line);color:var(--dim);background:var(--bg3);">MANUAL</span>
-      <button class="btn" id="wxFetchBtn" onclick="fetchWeather()" style="font-size:8px;padding:4px 10px;">&#8635; AUTO-FETCH</button>
-    </span>
-  </div>
-  <div id="wxStatusRow" style="display:none;font-size:8px;letter-spacing:2px;padding:6px 10px;margin-bottom:10px;border-left:3px solid var(--line);"></div>
-  <div class="g4">
-    <div class="field"><label class="flbl">WIND SPEED (m/s)</label><input type="number" id="wSpd" step="0.1" min="0" placeholder="0" oninput="autoCalc();wxSetManual()"/></div>
-    <div class="field"><label class="flbl">WIND DIR (°N)</label><input type="number" id="wDir" step="1" min="0" max="360" placeholder="0" oninput="autoCalc();wxSetManual()"/></div>
-    <div class="field"><label class="flbl">TEMPERATURE (°C)</label><input type="number" id="temp" step="1" value="15" oninput="autoCalc();wxSetManual()"/></div>
-    <div class="field"><label class="flbl">GUN ALTITUDE (m)</label><input type="number" id="altM" step="1" value="0" oninput="autoCalc()"/></div>
-  </div>
-</div>
-
-<!-- LIVE RANGE BOX -->
-<div id="liveRangeBox" class="range-box" style="display:none;"><span id="liveRangeTxt"></span></div>
-
-<!-- DANGER CLOSE BOX -->
-<div class="danger-close-box" id="dangerCloseBox">
-  <div class="dcb-title">&#9888; DANGER CLOSE</div>
-  <div class="dcb-body" id="dangerCloseBody"></div>
-</div>
-
-<!-- ERROR -->
-<div id="errBox" class="err" style="display:none;"></div>
-
-<!-- COMPUTE BUTTON -->
-<button class="fire-btn" id="fireBtn" onclick="compute()" disabled>
-  COMPUTE BARREL ELEVATION &amp; TRAVERSE BEARING
-</button>
-
-<!-- SOLUTION BLOCK -->
-<div id="solBlock" style="display:none;" class="fadein">
-
-<div class="sep">BARREL SOLUTION</div>
-<div id="rngWarn" class="warn-ok" style="display:none;"></div>
-
-<!-- ANGLE MODE -->
-<div style="margin-bottom:14px;">
-  <div style="font-size:8px;letter-spacing:3px;color:var(--ink3);margin-bottom:8px;">TRAJECTORY MODE</div>
-  <div class="angle-mode-row">
-    <button class="angle-mode-btn active" id="angleModeLow" onclick="setAngleMode('low')">LOW ANGLE (NORMAL)</button>
-    <button class="angle-mode-btn" id="angleModeHigh" onclick="setAngleMode('high')">HIGH ANGLE (STEEP)</button>
-  </div>
-  <div id="dualSolRow" class="dual-sol" style="display:none;">
-    <div class="sol-card active" id="solCardLow" onclick="setAngleMode('low')">
-      <div class="sol-card-label">LOW ANGLE</div>
-      <div class="sol-card-angle" id="solCardLowAngle">--.-°</div>
-      <div class="sol-card-sub" id="solCardLowSub">-- MIL · --s TOF</div>
-    </div>
-    <div class="sol-card" id="solCardHigh" onclick="setAngleMode('high')">
-      <div class="sol-card-label">HIGH ANGLE</div>
-      <div class="sol-card-angle" id="solCardHighAngle">--.-°</div>
-      <div class="sol-card-sub" id="solCardHighSub">-- MIL · --s TOF</div>
-    </div>
-  </div>
-</div>
-
-<!-- BARREL BOARD -->
-<div class="barrel-board" id="barrelBoard">
-  <div class="bb-header">
-    <span id="bbWeaponLabel">BARREL SETTING</span>
-    <span class="bbtime" id="solTime">--:--:--</span>
-    <button class="bbexport" onclick="exportFireMission()">&#9112; COPY FIRE MISSION</button>
-  </div>
-  <div class="bb-main" id="bbMain">
-    <div class="bb-cell">
-      <span class="bblbl">BARREL ELEVATION</span>
-      <div class="bbval" id="bigElev">--.-</div>
-      <div class="bbunit">DEGREES</div>
-      <div class="bbsub" id="bigElevSub">-- MIL</div>
-    </div>
-    <div class="bb-cell">
-      <span class="bblbl">TRAVERSE BEARING</span>
-      <div class="bbval" id="bigBrg">---.-</div>
-      <div class="bbunit">DEGREES</div>
-      <div class="bbsub" id="bigBrgSub">DIRECTION: --</div>
-    </div>
-    <div class="bb-cell" id="relTraverseCell" style="display:none;">
-      <span class="bblbl" id="relTravLabel">RELATIVE TRAVERSE</span>
-      <div class="bbval" id="bigRelTrav" style="font-size:40px;">---</div>
-      <div class="bbunit" id="bigRelTravUnit">DEGREES</div>
-      <div class="bbsub" id="bigRelTravSub">Muzzle bearing not set</div>
-    </div>
-  </div>
-  <div class="bb-sub">
-    <div class="bb-sub-cell"><div class="bslbl">CHARGE</div><div class="bsval" id="subCharge">-</div></div>
-    <div class="bb-sub-cell"><div class="bslbl">RANGE</div><div class="bsval" id="subRange">-</div></div>
-    <div class="bb-sub-cell"><div class="bslbl">TIME OF FLIGHT</div><div class="bsval" id="subTOF">-</div></div>
-    <div class="bb-sub-cell"><div class="bslbl">MAX HEIGHT</div><div class="bsval" id="subOrd">-</div></div>
-    <div class="bb-sub-cell"><div class="bslbl">CORIOLIS CORR</div><div class="bsval" id="subCoriolis">-</div></div>
-  </div>
-  <div class="bb-crew">
-    <div class="bccap">CREW ACTION SEQUENCE</div>
-    <div class="crew-inline" id="crewSteps"></div>
-  </div>
-</div>
-
-<!-- COMPASS + ELEVATION -->
-<div class="g2" style="gap:14px;margin-bottom:14px;">
-  <div class="panel" style="margin-bottom:0;">
-    <div class="ptitle">TRAVERSE COMPASS <span id="compassLbl">--</span></div>
-    <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
-      <canvas id="compassCanvas" width="240" height="240"></canvas>
-      <div style="font-size:10px;letter-spacing:3px;" id="compassSub">-</div>
-    </div>
-  </div>
-  <div class="panel" style="margin-bottom:0;">
-    <div class="ptitle">TRAJECTORY PROFILE <span id="elevLbl">--</span></div>
-    <canvas id="elevCanvas" height="240"></canvas>
-    <div style="font-size:8px;letter-spacing:2px;color:var(--dim);margin-top:5px;" id="elevSub">-</div>
-  </div>
-</div>
-
-<!-- LIVE PHONE ALIGNMENT COMPASS -->
-<div class="panel" id="liveCompassPanel" style="margin-bottom:14px;">
-  <div class="ptitle">
-    &#9654; LIVE BARREL ALIGNMENT &mdash; TURN PHONE TO ALIGN WITH TARGET
-    <span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-      <span id="liveCompBadge" style="font-size:8px;letter-spacing:2px;padding:3px 8px;border:1px solid var(--line);color:var(--dim);background:var(--bg3);">INACTIVE</span>
-      <button class="btn" id="liveCompStartBtn" onclick="startLiveCompass()" style="font-size:8px;padding:4px 10px;">&#9654; START</button>
-      <button class="btn" id="liveCompStopBtn" onclick="stopLiveCompass()" style="display:none;font-size:8px;padding:4px 10px;">&#9646;&#9646; STOP</button>
-    </span>
-  </div>
-  <div id="liveCompPermNote" style="display:none;font-size:9px;letter-spacing:2px;color:var(--yel);padding:4px 0 10px;">
-    &#9888; iOS: TAP START &mdash; permission required to read compass sensor
-  </div>
-  <div id="liveCompBody" style="display:none;">
-
-    <!-- BIG DELTA READOUT -->
-    <div style="display:flex;align-items:stretch;gap:0;border:2px solid var(--ink);margin-bottom:12px;">
-      <div style="flex:1;padding:14px 10px;text-align:center;border-right:1px solid var(--line);background:var(--cbg);">
-        <div style="font-size:8px;letter-spacing:3px;color:var(--ink3);margin-bottom:6px;">PHONE HEADING</div>
-        <div id="lcPhoneHdg" style="font-size:36px;font-weight:900;letter-spacing:-1px;color:var(--ink);">---</div>
-        <div id="lcPhoneDir" style="font-size:10px;letter-spacing:3px;color:var(--ink3);margin-top:3px;">--</div>
-      </div>
-      <div style="flex:1.2;padding:14px 10px;text-align:center;background:var(--bg2);">
-        <div style="font-size:8px;letter-spacing:3px;color:var(--ink3);margin-bottom:6px;">TURN TO TARGET</div>
-        <div id="lcDeltaVal" style="font-size:42px;font-weight:900;letter-spacing:-2px;color:var(--ink);">---</div>
-        <div id="lcDeltaDir" style="font-size:11px;letter-spacing:3px;font-weight:900;margin-top:3px;color:var(--ink);">---</div>
-      </div>
-      <div style="flex:1;padding:14px 10px;text-align:center;border-left:1px solid var(--line);background:var(--cbg);">
-        <div style="font-size:8px;letter-spacing:3px;color:var(--ink3);margin-bottom:6px;">TARGET BEARING</div>
-        <div id="lcTargetBrg" style="font-size:36px;font-weight:900;letter-spacing:-1px;color:var(--ink);">---</div>
-        <div id="lcTargetDir" style="font-size:10px;letter-spacing:3px;color:var(--ink3);margin-top:3px;">--</div>
-      </div>
-    </div>
-
-    <!-- ALIGNMENT STATUS BAR -->
-    <div id="lcAlignBar" style="
-      padding:10px 16px;margin-bottom:12px;
-      border:2px solid var(--line);
-      font-size:11px;letter-spacing:3px;font-weight:900;
-      text-align:center;transition:background .15s,border-color .15s,color .15s;">
-      AWAITING SENSOR&hellip;
-    </div>
-
-    <!-- LIVE ROTATING COMPASS CANVAS -->
-    <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
-      <canvas id="liveCompCanvas" width="300" height="300" style="border:2px solid var(--line);max-width:100%;"></canvas>
-      <div style="font-size:8px;letter-spacing:3px;color:var(--dim);text-align:center;">
-        ROSE rotates with phone &nbsp;&middot;&nbsp;
-        <span style="color:var(--ink);font-weight:900;">WHITE ARROW</span> = target bearing &nbsp;&middot;&nbsp;
-        <span style="color:#ff8800;font-weight:900;">ORANGE MARKER</span> = phone heading
-      </div>
-    </div>
-
-  </div><!-- /liveCompBody -->
-</div><!-- /liveCompassPanel -->
-
-<!-- DATA GRIDS -->
-<div class="panel"><div class="ptitle">NAVIGATION DATA</div><div id="navGrid" class="g4"></div></div>
-<div class="panel"><div class="ptitle">BALLISTIC DATA</div><div id="balGrid" class="g4"></div></div>
-<div class="panel" id="windPanel" style="display:none;"><div class="ptitle">WIND CORRECTION</div><div id="windGrid" class="g4"></div></div>
-<div class="panel" id="coriolisPanel" style="display:none;"><div class="ptitle">CORIOLIS &amp; ATMOSPHERE</div><div id="coriolisGrid" class="g4"></div></div>
-
-<!-- COORDINATES -->
-<div class="panel">
-  <div class="ptitle">COORDINATE REFERENCE</div>
-  <div class="g2">
-    <div><div style="font-size:8px;letter-spacing:3px;color:var(--dim);margin-bottom:6px;">GUN POSITION</div><div id="coordGun" style="font-size:10px;line-height:2;">-</div></div>
-    <div><div style="font-size:8px;letter-spacing:3px;color:var(--dim);margin-bottom:6px;">TARGET POSITION</div><div id="coordTgt" style="font-size:10px;line-height:2;">-</div></div>
-  </div>
-</div>
-
-<!-- MAP -->
-<div class="panel">
-  <div class="ptitle">TACTICAL PLOT <span style="color:var(--dim);font-weight:normal;font-size:8px;">OFFLINE</span></div>
-  <canvas id="mapCanvas" height="300"></canvas>
-  <div style="font-size:8px;color:var(--dim);letter-spacing:2px;margin-top:5px;">* GUN &nbsp; &#9650; TARGET &nbsp; --- BEARING &nbsp; o RANGE RINGS &nbsp; DC DANGER CLOSE RADIUS</div>
-</div>
-
-</div><!-- /solBlock -->
-
-<!-- HISTORY -->
-<div class="panel" style="margin-top:6px;">
-  <div class="ptitle">MISSION LOG <span id="histCount">0 ENTRIES</span>
-    <button class="btn btn-sm" onclick="clearHistory()">CLEAR ALL</button>
-  </div>
-  <div id="histList"><div style="font-size:9px;letter-spacing:2px;color:var(--dim);padding:8px 0;">NO MISSIONS LOGGED</div></div>
-</div>
-
-<!-- FOOTER -->
-<div style="border-top:2px solid var(--ink);padding-top:9px;margin-top:10px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px;">
-  <div style="font-size:8px;color:var(--dim);letter-spacing:3px;">CORIOLIS · TEMP CORRECTION · ALTITUDE ATMOSPHERE · TRAJECTORY WIND · DANGER CLOSE · MGRS · DUAL ANGLE</div>
-  <div style="font-size:8px;color:var(--dim);letter-spacing:3px;">MORTAR-FCS v4.0</div>
-</div>
-
-</div><!-- /wrap -->
-
-<script>
-'use strict';
-
-/* ═══════════════ STATE ═══════════════ */
-let GUN=null, RES=null, HIST=[], SELCHG=null, ACTIVE_WPN='60';
-let MUZ={bearing:null,mode:'off'};
-let ANGLE_MODE='low'; // 'low' | 'high'
-let GUN_COORD_MODE='dd'; // 'dd' | 'mgrs'
-let TGT_COORD_MODE='dd';
-let WX_SOURCE='manual';
-
-/* ═══════════════ WEAPON DATABASE ═══════════════ */
-const WEAPONS={
-  '60':{
-    key:'60',label:'M57 60mm MORTAR',ammo:'M73 HE Shell',
-    cal:'60mm',mass:1.35,Cd:0.09,diam:0.060,weight_kg:19.7,sight:'NSB-3',
-    minEl:45,maxEl:85,dangerClose:200,
-    info:'Drop-fired smooth-bore. Yugoslav/Serbian design.',
-    // v0/Cd recalibrated 2026-07: previous v0s were fit with the no-drag
-    // vacuum formula (v0=√(range·g)), then a real drag model was applied
-    // on top -- double-counting air resistance and under-ranging by up to
-    // ~45% at high charges. These values are solved so solveBal's own
-    // drag simulation reproduces the real published max range per charge,
-    // with a single realistic Cd shared across all charges (same shell,
-    // only propellant/v0 changes) and all velocities kept subsonic.
-    charges:{
-      'CH 0':{v0:55, min:100, max:300, lbl:'Drop-Fired / Close Assault'},
-      'CH 1':{v0:107,min:300, max:1050,lbl:'Close Support'},
-      'CH 2':{v0:135,min:1050,max:1600,lbl:'Mid-Range Engagement'},
-      'CH 3':{v0:158,min:1600,max:2100,lbl:'Extended Range'},
-      'CH 4':{v0:178,min:2100,max:2540,lbl:'Maximum Effective Range'},
+    function cleanCoordText(value) {
+      return String(value || '').trim();
     }
-  },
-  '81':{
-    key:'81',label:'M252 81mm MORTAR',ammo:'M821/M889 HE Shell',
-    cal:'81mm',mass:4.54,Cd:0.08,diam:0.081,weight_kg:41.3,sight:'M64 Sight Unit',
-    minEl:45,maxEl:85,dangerClose:300,
-    info:'US/NATO standard medium mortar. M252A1 variant.',
-    // v0/Cd recalibrated 2026-07 -- see note on 60mm entry above.
-    charges:{
-      'CH 0':{v0:70, min:83,  max:490, lbl:'Charge 0 — Close/Drop'},
-      'CH 1':{v0:106,min:490, max:1095,lbl:'Charge 1 — Short Range'},
-      'CH 2':{v0:133,min:1095,max:1685,lbl:'Charge 2 — Medium Range'},
-      'CH 3':{v0:165,min:1685,max:2495,lbl:'Charge 3 — Long Range'},
-      'CH 4':{v0:193,min:2495,max:3290,lbl:'Charge 4 — Extended Range'},
-      'CH 5':{v0:211,min:3290,max:3854,lbl:'Charge 5 — Maximum Low Angle'},
-      'CH 6':{v0:265,min:3854,max:5608,lbl:'Charge 6 — Maximum Range'},
-    }
-  },
-  '120':{
-    key:'120',label:'M120 120mm MORTAR',ammo:'M934/M931 HE Shell',
-    cal:'120mm',mass:12.9,Cd:0.08,diam:0.120,weight_kg:144.7,sight:'M137A1 Sight',
-    minEl:45,maxEl:85,dangerClose:600,
-    info:'Heavy battalion-level mortar. Vehicle-mountable.',
-    // v0/Cd recalibrated 2026-07 -- see note on 60mm entry above.
-    charges:{
-      'CH 0':{v0:84, min:200, max:700, lbl:'Charge 0 — Close Range'},
-      'CH 1':{v0:121,min:700, max:1420,lbl:'Charge 1 — Short Range'},
-      'CH 2':{v0:156,min:1420,max:2300,lbl:'Charge 2 — Medium Range'},
-      'CH 3':{v0:190,min:2300,max:3300,lbl:'Charge 3 — Long Range'},
-      'CH 4':{v0:223,min:3300,max:4400,lbl:'Charge 4 — Extended Range'},
-      'CH 5':{v0:254,min:4400,max:5500,lbl:'Charge 5 — Long Extended'},
-      'CH 6':{v0:300,min:5500,max:7240,lbl:'Charge 6 — Maximum Range'},
-    }
-  }
-};
-function W(){ return WEAPONS[ACTIVE_WPN]; }
 
-
-/* ═══════════════ DARK MODE ═══════════════ */
-const DM_KEY='mfcs-dark';
-let isDark=localStorage.getItem(DM_KEY)==='1';
-if(localStorage.getItem(DM_KEY)===null)
-  isDark=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;
-function applyDark(d){
-  isDark=d;
-  document.documentElement.classList.toggle('dark',d);
-  document.getElementById('dmToggle').textContent=d?'\u25D1 LIGHT':'\u25D0 DARK';
-  document.getElementById('themeColorMeta').content=d?'#0a0a08':'#f5f5f0';
-  localStorage.setItem(DM_KEY,d?'1':'0');
-  if(RES) render();
-}
-function toggleDark(){ applyDark(!isDark); }
-applyDark(isDark);
-
-/* ═══════════════ MATH ═══════════════ */
-const RAD=d=>d*Math.PI/180, DEG=r=>r*180/Math.PI;
-function haversine(a,b,c,d){
-  const R=6371000,x=Math.sin(RAD(c-a)/2)**2+Math.cos(RAD(a))*Math.cos(RAD(c))*Math.sin(RAD(d-b)/2)**2;
-  return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
-}
-function getBrg(a,b,c,d){
-  return(DEG(Math.atan2(Math.sin(RAD(d-b))*Math.cos(RAD(c)),
-    Math.cos(RAD(a))*Math.sin(RAD(c))-Math.sin(RAD(a))*Math.cos(RAD(c))*Math.cos(RAD(d-b))))+360)%360;
-}
-const DIRS=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
-const dirLbl=b=>DIRS[Math.round(b/22.5)%16];
-const fmtDist=m=>m>=1000?`${(m/1000).toFixed(2)} km`:`${m.toFixed(0)} m`;
-const degToMil=d=>Math.round(d*(6400/(2*Math.PI))*RAD(1));
-function fmtDMS(deg,isLat){
-  const a=Math.abs(deg),d=Math.floor(a),m=Math.floor((a-d)*60),s=((a-d)*3600-m*60).toFixed(1);
-  return`${d}\u00b0${m}'${s}" ${isLat?(deg>=0?'N':'S'):(deg>=0?'E':'W')}`;
-}
-function getCSSVar(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
-
-/* ═══════════════ STANDARD ATMOSPHERE ═══════════════ */
-// ISA model: rho varies with altitude during flight
-function airDensityAtAlt(altM){
-  // Standard atmosphere up to ~11km
-  const T0=288.15, L=0.0065, R=287.05, g=9.81;
-  const T=T0-L*altM;
-  const p=101325*Math.pow(T/T0,g/(L*R));
-  return p/(R*T);
-}
-
-/* ═══════════════ ENHANCED BALLISTICS ═══════════════ */
-/*
-  Improvements over v3:
-  1. Altitude-varying air density per time step (ISA model)
-  2. Propellant temperature correction on v0 (0.3%/°C from 15°C baseline)
-  3. Wind force applied per time step in sim loop (not post-hoc)
-  4. Coriolis force applied per time step (Fc = 2m * Ω × v)
-  5. High-angle solution search (above 65°)
-  6. Returns both low and high angle solutions
-*/
-function solveBal(rangeM, elevDelta, v0, tempC, gunAltM, ws, wd, brgDeg, latDeg){
-  const wp=W();
-  const g=9.81;
-  const A=Math.PI*(wp.diam/2)**2;
-  const m=wp.mass;
-  const dt=0.05;
-
-  // Temperature correction: 0.3%/°C from 15°C standard
-  const tempFactor=1+0.003*(tempC-15);
-  const v0adj=v0*tempFactor;
-
-  // Wind components in gun→target frame
-  // ws = wind speed, wd = wind direction (met), brgDeg = gun→target bearing
-  const windRad=RAD(wd);
-  const brgRad=RAD(brgDeg);
-  // crosswind (+ = right), headwind (+ = tailwind helps range)
-  const wCross=ws*Math.sin(windRad-brgRad);
-  const wHead =ws*Math.cos(windRad-brgRad);
-
-  // Coriolis: Ω = 7.2921e-5 rad/s, vertical component = Ω*sin(lat)
-  const OMEGA=7.2921e-5;
-  const Omega_z=OMEGA*Math.sin(RAD(latDeg));
-
-  function simulate(angDeg){
-    const a=RAD(angDeg);
-    let x=0,y=0,z=0; // x=range, y=height, z=lateral
-    let vx=v0adj*Math.cos(a); // forward
-    let vy=v0adj*Math.sin(a); // up
-    let vz=0;                 // lateral
-    let t=0;
-    let maxY=0;
-    for(let i=0;i<16000;i++){
-      const curAlt=gunAltM+y;
-      const rho=airDensityAtAlt(Math.max(0,curAlt));
-      const Cd=wp.Cd;
-      const B=0.5*rho*Cd*A/m;
-      const spd=Math.sqrt(vx*vx+vy*vy+vz*vz);
-
-      // Drag (opposes velocity vector)
-      const drag=B*spd;
-      let ax=-drag*vx;
-      let ay=-g-drag*vy;
-      let az=-drag*vz;
-
-      // Wind effect — apply as acceleration proportional to relative wind
-      // Cross and head wind push projectile
-      ax+=B*spd*(wHead);
-      az+=B*spd*(wCross);
-
-      // Coriolis (in northern hemisphere, deflects east = +z direction for northward shot)
-      // Simplified: lateral Coriolis = 2 * Omega_z * vx * t factor
-      az+=2*Omega_z*vx;
-
-      vx+=ax*dt; vy+=ay*dt; vz+=az*dt;
-      x+=vx*dt; y+=vy*dt; z+=vz*dt;
-      t+=dt;
-      if(y>maxY) maxY=y;
-      if(y<elevDelta-0.5&&x>rangeM*0.05) break;
-    }
-    return{x,y,z,t,maxY};
-  }
-
-  // Search LOW angle: 45° to 65°
-  let bestLow=null,minErrLow=1e9;
-  for(let ang=45;ang<=65.1;ang+=0.1){
-    const r=simulate(ang);
-    const err=Math.abs(r.x-rangeM);
-    if(err<minErrLow){minErrLow=err;bestLow={ang,r};}
-    if(r.x>rangeM*1.4) break;
-  }
-
-  // Search HIGH angle: 65° to 85°
-  let bestHigh=null,minErrHigh=1e9;
-  for(let ang=85;ang>=65;ang-=0.1){
-    const r=simulate(ang);
-    const err=Math.abs(r.x-rangeM);
-    if(err<minErrHigh){minErrHigh=err;bestHigh={ang,r};}
-  }
-
-  const low=bestLow||{ang:60,r:{x:rangeM,y:0,z:0,t:rangeM/v0adj,maxY:100}};
-  const high=bestHigh||low;
-
-  function makeSol(s){
-    return{
-      elev:s.ang,
-      tof:s.r.t,
-      maxOrd:s.r.maxY,
-      lateralDrift:s.r.z,  // metres, + = right of bearing
-      tempFactor,
-      v0adj
-    };
-  }
-
-  return{low:makeSol(low),high:makeSol(high)};
-}
-
-function simTraj(angDeg, v0adj, elevDelta, gunAltM){
-  const wp=W();
-  const g=9.81,A=Math.PI*(wp.diam/2)**2,m=wp.mass,dt=0.05;
-  const a=RAD(angDeg);
-  let pts=[],x=0,y=0,vx=v0adj*Math.cos(a),vy=v0adj*Math.sin(a);
-  for(let i=0;i<16000;i++){
-    pts.push({x,y});
-    const curAlt=gunAltM+y;
-    const rho=airDensityAtAlt(Math.max(0,curAlt));
-    const B=0.5*rho*wp.Cd*A/m;
-    const spd=Math.sqrt(vx*vx+vy*vy);
-    const drag=B*spd;
-    vx-=drag*vx*dt; vy-=(g+drag*vy)*dt;
-    x+=vx*dt; y+=vy*dt;
-    if(y<elevDelta-0.5&&x>0.5) break;
-  }
-  return pts;
-}
-
-/* ═══════════════ CORIOLIS CALC ═══════════════ */
-function coriolisDeflection(rangeM, tof, latDeg){
-  const OMEGA=7.2921e-5;
-  // Eastward drift = OMEGA * range * tof * sin(lat) / 2
-  const drift=OMEGA*rangeM*(tof/2)*Math.sin(RAD(latDeg));
-  return drift; // metres eastward (+ = east deflection)
-}
-
-/* ═══════════════ DANGER CLOSE ═══════════════ */
-function checkDangerClose(dist){
-  const fd=parseFloat(document.getElementById('friendlyDist').value)||0;
-  if(fd<=0) return{isDanger:false};
-  const minSafe=W().dangerClose;
-  const isDanger=fd<minSafe;
-  return{isDanger,friendlyDist:fd,minSafe,margin:fd-minSafe};
-}
-
-/* ═══════════════ CHARGE SELECTION ═══════════════ */
-function pickCharge(rangeM){
-  const charges=W().charges;
-  const vals=Object.values(charges);
-  if(rangeM<vals[0].min) return{name:Object.keys(charges)[0],status:'too_close'};
-  if(rangeM>vals[vals.length-1].max) return{name:Object.keys(charges)[Object.keys(charges).length-1],status:'too_far'};
-  for(const[n,d]of Object.entries(charges)) if(rangeM>=d.min&&rangeM<=d.max) return{name:n,status:'ok'};
-  let best=Object.keys(charges)[charges.length-1];
-  for(const[n,d]of Object.entries(charges)){if(rangeM<d.max){best=n;break;}}
-  return{name:best,status:'ok'};
-}
-function rangeStatus(rangeM){
-  const vals=Object.values(W().charges);
-  if(rangeM<vals[0].min) return 'TOO CLOSE';
-  if(rangeM>vals[vals.length-1].max) return 'OUT OF RANGE';
-  return 'IN RANGE';
-}
-
-/* ═══════════════ MGRS CONVERSION ═══════════════ */
-// Full MGRS ⇄ lat/lng conversion (WGS84), correct for both hemispheres
-// and validated against round-trip tests across every zone/band edge case
-// (equator crossing, zone boundaries, high latitude, near dateline).
-// Previous version had a northing-disambiguation bug that could place a
-// decoded MGRS grid over 1,000km from the true location — this rewrite
-// fixes that by searching all valid 2,000,000m northing cycles and keeping
-// the one whose resulting latitude actually falls inside the parsed band.
-// Note: UPS polar regions (bands A,B,Y,Z / lat <-80 or >84) are not
-// supported, matching prior behavior.
-const MGRS_A=6378137, MGRS_F=1/298.257223563;
-const MGRS_E2=MGRS_F*(2-MGRS_F);
-const UTM_K0=0.9996;
-const MGRS_BAND_LETTERS='CDEFGHJKLMNPQRSTUVWX'; // index 0 = band C (-80°)
-const MGRS_COL_SETS=['ABCDEFGH','JKLMNPQR','STUVWXYZ'];
-const MGRS_ROW_ODD ='ABCDEFGHJKLMNPQRSTUV';
-const MGRS_ROW_EVEN='FGHJKLMNPQRSTUVABCDE';
-
-function mgrsLatBand(lat){
-  if(lat<-80||lat>84) return null;
-  if(lat>=72) return 'X'; // X band is 12° wide (72-84)
-  return MGRS_BAND_LETTERS[Math.floor((lat+80)/8)];
-}
-function mgrsLatBandRange(letter){
-  const idx=MGRS_BAND_LETTERS.indexOf(letter);
-  const min=-80+idx*8;
-  return{min,max:letter==='X'?84:min+8};
-}
-function latLngToUTM(lat,lng,zone){
-  zone=zone||Math.floor((lng+180)/6)+1;
-  const lon0=RAD((zone-1)*6-180+3);
-  const latR=RAD(lat),lngR=RAD(lng);
-  const e2=MGRS_E2,ep2=e2/(1-e2),a=MGRS_A;
-  const N=a/Math.sqrt(1-e2*Math.sin(latR)**2);
-  const T=Math.tan(latR)**2;
-  const C=ep2*Math.cos(latR)**2;
-  const A=Math.cos(latR)*(lngR-lon0);
-  const M=a*((1-e2/4-3*e2*e2/64-5*e2**3/256)*latR
-            -(3*e2/8+3*e2*e2/32+45*e2**3/1024)*Math.sin(2*latR)
-            +(15*e2*e2/256+45*e2**3/1024)*Math.sin(4*latR)
-            -(35*e2**3/3072)*Math.sin(6*latR));
-  const E=UTM_K0*N*(A+(1-T+C)*A**3/6+(5-18*T+T*T+72*C-58*ep2)*A**5/120)+500000;
-  const Nraw=UTM_K0*(M+N*Math.tan(latR)*(A*A/2+(5-T+9*C+4*C*C)*A**4/24+(61-58*T+T*T+600*C-330*ep2)*A**6/720));
-  const Nf=lat<0?Nraw+10000000:Nraw;
-  return{zone,E,Nf};
-}
-function utmToLatLng(zone,north,E,Nf){
-  const k0=UTM_K0,a=MGRS_A,e2=MGRS_E2,ep2=e2/(1-e2);
-  const x=E-500000;
-  const y=north?Nf:Nf-10000000;
-  const lon0=RAD((zone-1)*6-180+3);
-  const M=y/k0;
-  const mu=M/(a*(1-e2/4-3*e2*e2/64-5*e2**3/256));
-  const e1=(1-Math.sqrt(1-e2))/(1+Math.sqrt(1-e2));
-  const phi1=mu+(3*e1/2-27*e1**3/32)*Math.sin(2*mu)+(21*e1*e1/16-55*e1**4/32)*Math.sin(4*mu)+(151*e1**3/96)*Math.sin(6*mu);
-  const N1=a/Math.sqrt(1-e2*Math.sin(phi1)**2);
-  const T1=Math.tan(phi1)**2;
-  const C1=ep2*Math.cos(phi1)**2;
-  const R1=a*(1-e2)/Math.pow(1-e2*Math.sin(phi1)**2,1.5);
-  const D=x/(N1*k0);
-  const lat=phi1-(N1*Math.tan(phi1)/R1)*(D*D/2-(5+3*T1+10*C1-4*C1*C1-9*ep2)*D**4/24+(61+90*T1+298*C1+45*T1*T1-252*ep2-3*C1*C1)*D**6/720);
-  const lon=lon0+(D-(1+2*T1+C1)*D**3/6+(5-2*C1+28*T1-3*C1*C1+8*ep2+24*T1*T1)*D**5/120)/Math.cos(phi1);
-  return{lat:DEG(lat),lng:DEG(lon)};
-}
-function latLngToMGRS(lat,lng){
-  const zone=Math.floor((lng+180)/6)+1;
-  const band=mgrsLatBand(lat);
-  if(!band) return 'POLAR (UNSUPPORTED)';
-  const{E,Nf}=latLngToUTM(lat,lng,zone);
-  const colIdx=(Math.floor(E/100000)-1+8)%8;
-  const sqE=MGRS_COL_SETS[(zone-1)%3][colIdx];
-  const rowIdx=Math.floor(((Nf%2000000)+2000000)%2000000/100000);
-  const sqN=(zone%2===1?MGRS_ROW_ODD:MGRS_ROW_EVEN)[rowIdx];
-  const eGrid=Math.floor(E%100000).toString().padStart(5,'0');
-  const nGrid=Math.floor(Nf%100000).toString().padStart(5,'0');
-  return`${zone}${band}${sqE}${sqN} ${eGrid} ${nGrid}`;
-}
-function mgrsToLatLng(mgrs){
-  const s=mgrs.replace(/\s/g,'').toUpperCase();
-  const m=s.match(/^(\d{1,2})([C-HJ-NP-X])([A-HJ-NP-Z]{2})(\d{4,10})$/);
-  if(!m) return null;
-  const zone=parseInt(m[1]);
-  const band=m[2];
-  const sqE=m[3][0],sqN=m[3][1];
-  const nums=m[4];
-  const halfLen=Math.floor(nums.length/2);
-  const eOff=parseInt(nums.slice(0,halfLen).padEnd(5,'0'));
-  const nOff=parseInt(nums.slice(halfLen).padEnd(5,'0'));
-
-  const colIdx=MGRS_COL_SETS[(zone-1)%3].indexOf(sqE);
-  if(colIdx<0) return null;
-  const E=(colIdx+1)*100000+eOff;
-
-  const rowSet=zone%2===1?MGRS_ROW_ODD:MGRS_ROW_EVEN;
-  const rowIdx=rowSet.indexOf(sqN);
-  if(rowIdx<0) return null;
-  const base=rowIdx*100000+nOff; // Nf mod 2,000,000
-
-  const{min,max}=mgrsLatBandRange(band);
-  const north=MGRS_BAND_LETTERS.indexOf(band)>=10;
-
-  // Disambiguate the 2,000,000m row-letter cycle: try each valid multiple
-  // and keep the candidate whose resulting latitude actually falls inside
-  // the parsed band. This is the step the old parser was missing.
-  let best=null,bestErr=Infinity;
-  for(let k=0;k<6;k++){
-    const Nf=base+k*2000000;
-    if(Nf<0||Nf>10000000) continue;
-    const ll=utmToLatLng(zone,north,E,Nf);
-    const err=Math.abs(ll.lat-(min+max)/2);
-    if(ll.lat>=min-0.5&&ll.lat<max+0.5&&err<bestErr){bestErr=err;best=ll;}
-  }
-  return best;
-}
-
-/* ═══════════════ COORD MODE HANDLERS ═══════════════ */
-let gunCoordMode='dd',tgtCoordMode='dd';
-function setGunCoordMode(mode){
-  gunCoordMode=mode;
-  document.getElementById('gunTabDD').classList.toggle('active',mode==='dd');
-  document.getElementById('gunTabMGRS').classList.toggle('active',mode==='mgrs');
-  document.getElementById('gunDD').style.display=mode==='dd'?'block':'none';
-  document.getElementById('gunMGRS').style.display=mode==='mgrs'?'block':'none';
-}
-function setTgtCoordMode(mode){
-  tgtCoordMode=mode;
-  document.getElementById('tgtTabDD').classList.toggle('active',mode==='dd');
-  document.getElementById('tgtTabMGRS').classList.toggle('active',mode==='mgrs');
-  document.getElementById('tgtDD').style.display=mode==='dd'?'block':'none';
-  document.getElementById('tgtMGRS').style.display=mode==='mgrs'?'block':'none';
-}
-function mgrsTargetChange(){
-  const v=document.getElementById('tgtMGRSInput').value;
-  const ll=mgrsToLatLng(v);
-  if(ll){
-    document.getElementById('tLat').value=ll.lat.toFixed(6);
-    document.getElementById('tLng').value=ll.lng.toFixed(6);
-    autoCalc();
-  }
-}
-
-/* ═══════════════ ANGLE MODE ═══════════════ */
-function setAngleMode(mode){
-  ANGLE_MODE=mode;
-  document.getElementById('angleModeLow').classList.toggle('active',mode==='low');
-  document.getElementById('angleModeHigh').classList.toggle('active',mode==='high');
-  document.getElementById('solCardLow').classList.toggle('active',mode==='low');
-  document.getElementById('solCardHigh').classList.toggle('active',mode==='high');
-  if(RES) render();
-}
-
-/* ═══════════════ WEAPON TOGGLE ═══════════════ */
-let weaponPanelOpen=false;
-function toggleWeaponPanel(){
-  weaponPanelOpen=!weaponPanelOpen;
-  document.getElementById('weaponToggle').classList.toggle('open',weaponPanelOpen);
-  document.getElementById('weaponChevron').classList.toggle('open',weaponPanelOpen);
-}
-function selectWeapon(key){
-  ACTIVE_WPN=key;SELCHG=null;RES=null;
-  ['60','81','120'].forEach(k=>document.getElementById('wt-'+k).classList.toggle('active',k===key));
-  const wp=WEAPONS[key];
-  document.getElementById('weaponHeaderActive').textContent=wp.cal+' · '+wp.label.split(' ').slice(0,2).join(' ');
-  weaponPanelOpen=false;
-  document.getElementById('weaponToggle').classList.remove('open');
-  document.getElementById('weaponChevron').classList.remove('open');
-  buildCharges();updateSpecBar();
-  document.getElementById('solBlock').style.display='none';
-  document.getElementById('liveRangeBox').style.display='none';
-  autoCalc();
-}
-function updateSpecBar(){
-  const wp=W(),vals=Object.values(wp.charges);
-  const minR=vals[0].min,maxR=vals[vals.length-1].max;
-  document.getElementById('wsbName').textContent=wp.label;
-  document.getElementById('wsbStats').innerHTML=
-    `<span>CALIBRE: <strong>${wp.cal}</strong></span>`+
-    `<span>AMMO: <strong>${wp.ammo}</strong></span>`+
-    `<span>WEIGHT: <strong>${wp.weight_kg}kg</strong></span>`+
-    `<span>MIN: <strong>${minR}m</strong></span>`+
-    `<span>MAX: <strong style="color:var(--red);">${maxR}m</strong></span>`+
-    `<span>DANGER CLOSE: <strong style="color:var(--red);">${wp.dangerClose}m</strong></span>`;
-  const n=Object.keys(wp.charges).length;
-  document.getElementById('cstrip').style.gridTemplateColumns=`repeat(${n},1fr)`;
-  document.getElementById('cstripLabel').textContent=`${wp.cal.toUpperCase()} CHARGE SELECTION  —  ${wp.ammo.toUpperCase()}`;
-  document.getElementById('headerSub').textContent=`${wp.cal} · CORIOLIS · TEMP CORRECTION · DANGER CLOSE · DUAL ANGLE · MGRS`;
-  document.getElementById('bbWeaponLabel').textContent=`BARREL SETTING  —  ${wp.label}`;
-}
-function buildCharges(){
-  const el=document.getElementById('cstrip');
-  const label=el.querySelector('.cstrip-label');
-  el.innerHTML='';el.appendChild(label);
-  Object.entries(W().charges).forEach(([name,d])=>{
-    const btn=document.createElement('button');
-    btn.className='cbtn';btn.id='cb-'+name.replace(' ','-');
-    btn.innerHTML=`<div class="cn">${name}</div><div class="cv">v0=${d.v0}m/s</div><div class="cm">${d.min}-${d.max}m</div>`;
-    btn.onclick=()=>{SELCHG=(SELCHG===name?null:name);hlCharge(SELCHG);autoCalc();};
-    el.appendChild(btn);
-  });
-}
-function hlCharge(active){
-  const tLat=parseFloat(document.getElementById('tLat').value);
-  const tLng=parseFloat(document.getElementById('tLng').value);
-  const hasDist=GUN&&!isNaN(tLat)&&!isNaN(tLng);
-  const dist=hasDist?haversine(GUN.lat,GUN.lng,tLat,tLng):null;
-  Object.entries(W().charges).forEach(([n,d])=>{
-    const b=document.getElementById('cb-'+n.replace(' ','-'));
-    if(!b) return;
-    b.classList.toggle('sel',n===active);
-    if(dist!==null){
-      const covers=dist>=d.min&&dist<=d.max;
-      b.classList.toggle('in-range',covers&&n!==active);
-      b.classList.toggle('out-range',!covers&&n!==active);
-      const cv=b.querySelector('.cv'),cm=b.querySelector('.cm');
-      if(cv) cv.style.color=covers?'var(--grn)':'var(--dim)';
-      if(cm) cm.style.color=covers?'var(--grn)':'var(--dim)';
-    } else {
-      b.classList.remove('in-range','out-range');
-    }
-  });
-}
-
-/* ═══════════════ CLOCK ═══════════════ */
-function tick(){
-  const n=new Date(),p=x=>String(x).padStart(2,'0');
-  document.getElementById('clock').textContent=`${p(n.getUTCHours())}:${p(n.getUTCMinutes())}:${p(n.getUTCSeconds())} UTC`;
-  document.getElementById('dateln').textContent=n.toUTCString().slice(5,16).toUpperCase();
-}
-setInterval(tick,1000);tick();
-
-/* ═══════════════ GPS ═══════════════ */
-// Multi-sample, accuracy-weighted GPS fix.
-// A single getCurrentPosition() read can jump 5-20m on phone GPS (multipath,
-// cold fix, poor HDOP). We instead watch position for a short window, collect
-// several fixes, discard outliers, and take an inverse-variance weighted mean
-// so precise fixes count more than noisy ones. This directly tightens the
-// haversine range/bearing solution, since GUN.lat/lng feed straight into it.
-const GPS_SAMPLE_WINDOW_MS=4000;
-const GPS_MIN_SAMPLES=3;
-const GPS_MAX_SAMPLES=8;
-let gpsWatchId=null;
-
-function retryGPS(){
-  setGPSUI('searching');
-  if(!navigator.geolocation){setGPSUI('error','GEOLOCATION NOT SUPPORTED');return;}
-  if(gpsWatchId!==null){navigator.geolocation.clearWatch(gpsWatchId);gpsWatchId=null;}
-
-  const samples=[];
-  const deadline=Date.now()+GPS_SAMPLE_WINDOW_MS;
-
-  const finish=()=>{
-    if(gpsWatchId!==null){navigator.geolocation.clearWatch(gpsWatchId);gpsWatchId=null;}
-    if(samples.length===0){setGPSUI('error','GPS DENIED — USE MANUAL');return;}
-    const fixed=averageGPSSamples(samples);
-    setGun(fixed.lat,fixed.lng,fixed.alt,fixed.acc,samples.length);
-  };
-
-  gpsWatchId=navigator.geolocation.watchPosition(
-    pos=>{
-      samples.push({
-        lat:pos.coords.latitude,lng:pos.coords.longitude,
-        alt:pos.coords.altitude||0,acc:pos.coords.accuracy||50
-      });
-      setGPSUI('searching',`SAMPLING ${samples.length}/${GPS_MAX_SAMPLES}...`);
-      if(samples.length>=GPS_MAX_SAMPLES) finish();
-    },
-    err=>{ if(samples.length===0){ setGPSUI('error','GPS DENIED — USE MANUAL'); if(gpsWatchId!==null){navigator.geolocation.clearWatch(gpsWatchId);gpsWatchId=null;} } },
-    {enableHighAccuracy:true,timeout:GPS_SAMPLE_WINDOW_MS,maximumAge:0}
-  );
-
-  setTimeout(()=>{ if(samples.length>=GPS_MIN_SAMPLES||samples.length>0) finish(); else finish(); },
-    GPS_SAMPLE_WINDOW_MS-(Date.now()-(deadline-GPS_SAMPLE_WINDOW_MS)));
-}
-
-function averageGPSSamples(samples){
-  if(samples.length===1) return samples[0];
-  // Drop fixes whose reported accuracy is much worse than the best fix —
-  // these are usually a transient bad reading during acquisition.
-  const bestAcc=Math.min(...samples.map(s=>s.acc));
-  const kept=samples.filter(s=>s.acc<=Math.max(bestAcc*3,30));
-  const use=kept.length>0?kept:samples;
-
-  // Inverse-variance weighting: weight ∝ 1/accuracy². A fix reported as
-  // ±5m counts ~16x more than a ±20m fix, which is the statistically
-  // correct way to combine GPS reports of differing quality.
-  let wSum=0,latSum=0,lngSum=0,altSum=0;
-  for(const s of use){
-    const w=1/(s.acc*s.acc);
-    wSum+=w; latSum+=s.lat*w; lngSum+=s.lng*w; altSum+=s.alt*w;
-  }
-  const lat=latSum/wSum, lng=lngSum/wSum, alt=altSum/wSum;
-  // Report combined accuracy as the weighted RMS spread, floored by the
-  // best individual fix — combining samples should never claim to be
-  // *worse* than your best single reading, but should reflect real spread.
-  const spread=Math.sqrt(use.reduce((s,p)=>s+haversine(lat,lng,p.lat,p.lng)**2,0)/use.length);
-  const acc=Math.max(Math.min(...use.map(s=>s.acc)),spread);
-  return{lat,lng,alt,acc};
-}
-
-function setGPSUI(state,msg){
-  const dot=document.getElementById('gpsDot'),txt=document.getElementById('gpsTxt'),badge=document.getElementById('gpsbadge');
-  if(state==='searching'){dot.className='dot dot-y';txt.style.color='var(--yel)';txt.textContent=msg||'SEARCHING...';badge.textContent='ACQUIRING...';}
-  else if(state==='locked'){dot.className='dot dot-g';txt.style.color='var(--grn)';txt.textContent='GPS LOCKED';badge.textContent='LOCKED';badge.style.color='var(--grn)';}
-  else{dot.className='dot dot-r';txt.style.color='var(--red)';txt.textContent=msg||'GPS ERROR';badge.textContent='NO FIX';badge.style.color='var(--red)';}
-}
-function setGun(lat,lng,alt,acc,sampleCount){
-  GUN={lat,lng,alt:alt||0,acc};
-  setGPSUI('locked');
-  document.getElementById('gunDisp').style.display='block';
-  document.getElementById('manGPS').style.display='none';
-  document.getElementById('dLat').textContent=lat.toFixed(6)+'°';
-  document.getElementById('dLng').textContent=lng.toFixed(6)+'°';
-  document.getElementById('dLatD').textContent=fmtDMS(lat,true);
-  document.getElementById('dLngD').textContent=fmtDMS(lng,false);
-  document.getElementById('dAcc').textContent=acc
-    ?`±${acc.toFixed(0)}m${sampleCount>1?` (avg of ${sampleCount})`:''}`
-    :'manual';
-  document.getElementById('dMGRS').textContent='MGRS: '+latLngToMGRS(lat,lng);
-  document.getElementById('altM').value=(alt||0).toFixed(0);
-  document.getElementById('mainDot').className='dot dot-g';
-  document.getElementById('mainTxt').textContent='GPS LOCKED';
-  setRI('ri-gps','ok');autoCalc();updFireBtn();tryAutoWeather();
-}
-function toggleManGPS(){const p=document.getElementById('manGPS');p.style.display=p.style.display==='none'?'block':'none';}
-function applyManGPS(){
-  let lat,lng;
-  if(gunCoordMode==='mgrs'){
-    const v=document.getElementById('gunMGRSInput').value;
-    const ll=mgrsToLatLng(v);
-    if(!ll){alert('INVALID MGRS GRID');return;}
-    lat=ll.lat;lng=ll.lng;
-  } else {
-    lat=parseFloat(document.getElementById('gunLat').value);
-    lng=parseFloat(document.getElementById('gunLng').value);
-    if(isNaN(lat)||isNaN(lng)||lat<-90||lat>90||lng<-180||lng>180){alert('INVALID COORDINATES');return;}
-  }
-  const alt=parseFloat(document.getElementById('gunAlt').value)||0;
-  setGun(lat,lng,alt,null);
-}
-
-/* ═══════════════ READINESS ═══════════════ */
-function setRI(id,state){
-  const el=document.getElementById(id);
-  el.className='ri '+state;
-  const dotCls=state==='ok'?'dot-g':state==='warn'?'dot-y':state==='danger'?'dot-r':'dot-off';
-  el.querySelector('.dot').className='dot '+dotCls;
-}
-function updFireBtn(){
-  const tLat=parseFloat(document.getElementById('tLat').value);
-  const tLng=parseFloat(document.getElementById('tLng').value);
-  document.getElementById('fireBtn').disabled=!(GUN&&!isNaN(tLat)&&!isNaN(tLng));
-}
-
-/* ═══════════════ AUTO-CALC ═══════════════ */
-function autoCalc(){
-  updFireBtn();
-  const tLat=parseFloat(document.getElementById('tLat').value);
-  const tLng=parseFloat(document.getElementById('tLng').value);
-  const hasT=!isNaN(tLat)&&!isNaN(tLng);
-  setRI('ri-tgt',hasT?'ok':'fail');
-  setRI('ri-chg',SELCHG?'ok':'warn');
-  if(GUN&&hasT){
-    const dist=haversine(GUN.lat,GUN.lng,tLat,tLng);
-    const status=rangeStatus(dist);
-    const pick=SELCHG?{name:SELCHG}:pickCharge(dist);
-    hlCharge(pick.name);
-    const liveBox=document.getElementById('liveRangeBox');
-    const liveTxt=document.getElementById('liveRangeTxt');
-    liveBox.style.display='block';
-    const charges=W().charges,vals=Object.values(charges);
-    if(status==='TOO CLOSE'){
-      liveBox.className='range-box range-warn';
-      liveTxt.innerHTML=`<span class="rb-status">&#9888; TOO CLOSE</span> &nbsp;|&nbsp; ${fmtDist(dist)} &nbsp;|&nbsp; Min: <strong>${vals[0].min}m</strong>`;
-      setRI('ri-sol','warn');
-    } else if(status==='OUT OF RANGE'){
-      liveBox.className='range-box range-err';
-      liveTxt.innerHTML=`<span class="rb-status">&#10006; OUT OF RANGE</span> &nbsp;|&nbsp; ${fmtDist(dist)} &nbsp;|&nbsp; Max: <strong>${vals[vals.length-1].max}m</strong>`;
-      setRI('ri-sol','warn');
-    } else {
-      const chD=charges[pick.name];
-      liveBox.className='range-box range-ok';
-      liveTxt.innerHTML=`<span class="rb-status">&#10003; IN RANGE</span> &nbsp;|&nbsp; ${fmtDist(dist)} &nbsp;|&nbsp; Auto: <strong>${pick.name}</strong> (${chD.min}–${chD.max}m) &nbsp;|&nbsp; ${chD.lbl}`;
-    }
-    // Danger close check
-    const dc=checkDangerClose(dist);
-    const dcBox=document.getElementById('dangerCloseBox');
-    if(dc.isDanger){
-      dcBox.classList.add('show');
-      document.getElementById('dangerCloseBody').innerHTML=
-        `Friendly force distance <strong>${dc.friendlyDist}m</strong> is BELOW the minimum safe distance of <strong>${dc.minSafe}m</strong> for ${W().cal}.<br>
-        Margin: <strong>${(dc.margin).toFixed(0)}m INSIDE danger close zone.</strong><br>
-        DO NOT FIRE without positive friendly force clearance. Verify coordinates.`;
-      setRI('ri-dc','danger');
-    } else if(dc.friendlyDist>0){
-      dcBox.classList.remove('show');
-      setRI('ri-dc','ok');
-    } else {
-      dcBox.classList.remove('show');
-      setRI('ri-dc','ok');
-    }
-    compute(true);
-  } else {
-    document.getElementById('liveRangeBox').style.display='none';
-  }
-}
-
-/* ═══════════════ COMPUTE ═══════════════ */
-function compute(silent){
-  const errBox=document.getElementById('errBox');
-  errBox.style.display='none';
-  if(!GUN){showErr('SET GUN POSITION FIRST');return;}
-  const tLat=parseFloat(document.getElementById('tLat').value);
-  const tLng=parseFloat(document.getElementById('tLng').value);
-  if(isNaN(tLat)||isNaN(tLng)){if(!silent)showErr('ENTER VALID TARGET COORDINATES');return;}
-
-  const elevDiff=parseFloat(document.getElementById('tElev').value)||0;
-  const ws=parseFloat(document.getElementById('wSpd').value)||0;
-  const wd=parseFloat(document.getElementById('wDir').value)||0;
-  const temp=parseFloat(document.getElementById('temp').value)||15;
-  const alt=parseFloat(document.getElementById('altM').value)||0;
-
-  const dist=haversine(GUN.lat,GUN.lng,tLat,tLng);
-  const trueBrg=getBrg(GUN.lat,GUN.lng,tLat,tLng);
-
-  const pick=SELCHG?{name:SELCHG}:pickCharge(dist);
-  const chName=pick.name;
-  const charges=W().charges,chData=charges[chName];
-  const vals=Object.values(charges);
-  const tooClose=dist<vals[0].min,tooFar=dist>vals[vals.length-1].max;
-  hlCharge(chName);SELCHG=chName;
-
-  // ENHANCED BALLISTICS — all corrections applied inside solveBal
-  const sols=solveBal(dist,elevDiff,chData.v0,temp,alt,ws,wd,trueBrg,GUN.lat);
-  const activeSol=ANGLE_MODE==='high'?sols.high:sols.low;
-
-  const elevDeg=activeSol.elev;
-  const tof=activeSol.tof;
-  const maxOrd=activeSol.maxOrd;
-  const v0adj=activeSol.v0adj;
-  const elevMil=degToMil(elevDeg);
-
-  // Lateral drift in metres (from sim, includes wind + Coriolis)
-  const lateralDrift=activeSol.lateralDrift;
-
-  // Bearing adjustment for lateral drift
-  const deflRad=Math.atan2(lateralDrift,dist);
-  const adjBrg=(trueBrg+DEG(deflRad)+360)%360;
-
-  // Coriolis correction display value (eastward component)
-  const coriolisM=coriolisDeflection(dist,tof,GUN.lat);
-
-  // Muzzle bearing / relative traverse
-  const muzzleBrg=MUZ.bearing;
-  let relTraverse=null;
-  if(muzzleBrg!==null) relTraverse=calcRelTraverse(adjBrg,muzzleBrg);
-
-  // Danger close
-  const dc=checkDangerClose(dist);
-
-  // Temperature correction factor display
-  const tempCorr=((activeSol.tempFactor-1)*100).toFixed(1);
-
-  RES={
-    dist,trueBrg,adjBrg,dir:dirLbl(trueBrg),adjDir:dirLbl(adjBrg),
-    tLat,tLng,gLat:GUN.lat,gLng:GUN.lng,
-    elevDiff,chName,chV0:chData.v0,chLbl:chData.lbl,
-    chMin:chData.min,chMax:chData.max,
-    elevDeg,elevMil,tof,maxOrd,v0adj,
-    outOfRange:tooClose||tooFar,tooClose,tooFar,
-    ws,wd,lateralDrift,deflRad,temp,alt,
-    coriolisM,tempCorr,
-    weapon:ACTIVE_WPN,weaponLabel:W().label,
-    muzzleBrg,relTraverse,angleMode:ANGLE_MODE,
-    solLow:sols.low,solHigh:sols.high,
-    dangerClose:dc,
-    time:new Date().toLocaleTimeString(),
-    utcTime:new Date().toUTCString().slice(0,25),
-    id:Date.now()
-  };
-
-  // Update dual angle cards
-  const dualRow=document.getElementById('dualSolRow');
-  dualRow.style.display='block';
-  document.getElementById('solCardLowAngle').textContent=sols.low.elev.toFixed(1)+'°';
-  document.getElementById('solCardLowSub').textContent=degToMil(sols.low.elev)+' MIL · '+sols.low.tof.toFixed(1)+'s TOF';
-  document.getElementById('solCardHighAngle').textContent=sols.high.elev.toFixed(1)+'°';
-  document.getElementById('solCardHighSub').textContent=degToMil(sols.high.elev)+' MIL · '+sols.high.tof.toFixed(1)+'s TOF';
-
-  setRI('ri-sol',RES.outOfRange?'warn':'ok');
-  render();
-
-  const sb=document.getElementById('solBlock');
-  if(!silent){
-    HIST.unshift(RES);if(HIST.length>20)HIST.pop();saveHistory();renderHist();
-    sb.style.display='block';
-    sb.classList.remove('fadein');void sb.offsetWidth;sb.classList.add('fadein');
-    sb.scrollIntoView({behavior:'smooth',block:'start'});
-  } else {
-    if(sb.style.display==='none'){sb.style.display='block';sb.classList.remove('fadein');void sb.offsetWidth;sb.classList.add('fadein');}
-    const bb=document.getElementById('barrelBoard');
-    bb.classList.remove('flash');void bb.offsetWidth;bb.classList.add('flash');
-    HIST.unshift(RES);if(HIST.length>20)HIST.pop();saveHistory();renderHist();
-  }
-}
-function showErr(msg){const b=document.getElementById('errBox');b.style.display='block';b.textContent='! '+msg;}
-
-/* ═══════════════ RENDER ═══════════════ */
-function render(){
-  const R=RES;
-  const charges=W().charges,vals=Object.values(charges);
-
-  // Range warning
-  const rw=document.getElementById('rngWarn');
-  if(R.tooClose){
-    rw.style.display='block';rw.className='warn-err';
-    rw.innerHTML=`&#9888; TOO CLOSE &mdash; ${fmtDist(R.dist)} below minimum ${vals[0].min}m.`;
-  } else if(R.tooFar){
-    rw.style.display='block';rw.className='warn-err';
-    rw.innerHTML=`&#10006; OUT OF RANGE &mdash; ${fmtDist(R.dist)} exceeds ${W().cal} max ${vals[vals.length-1].max}m.`;
-  } else {
-    rw.style.display='block';rw.className='warn-ok';
-    rw.innerHTML=`&#10003; IN RANGE &mdash; ${fmtDist(R.dist)} &nbsp;|&nbsp; <strong>${R.chName}</strong> (${R.chMin}–${R.chMax}m) &nbsp;|&nbsp; ${R.chLbl}`;
-  }
-
-  // Big board
-  document.getElementById('solTime').textContent=R.time;
-  const bigElev=document.getElementById('bigElev'),bigBrg=document.getElementById('bigBrg');
-  bigElev.className='bbval'+(R.outOfRange?' red':'');
-  bigBrg.className='bbval'+(R.outOfRange?' red':'');
-  bigElev.textContent=R.elevDeg.toFixed(1);
-  document.getElementById('bigElevSub').textContent=R.elevMil+' MIL  |  '+R.elevDeg.toFixed(2)+'°'+(R.angleMode==='high'?' [HIGH ANGLE]':'')+(R.outOfRange?' [EST]':'');
-  bigBrg.textContent=R.adjBrg.toFixed(1);
-  document.getElementById('bigBrgSub').textContent='DIRECTION: '+R.adjDir+(R.lateralDrift!==0?' (WIND+CORIOLIS ADJ)':'');
-
-  // 3-col for relative traverse
-  const bbMain=document.getElementById('bbMain');
-  bbMain.classList.toggle('three-col',R.relTraverse!==null);
-  const rtCell=document.getElementById('relTraverseCell');
-  rtCell.style.display=R.relTraverse!==null?'block':'none';
-  if(R.relTraverse!==null){
-    const dir=R.relTraverse>0.5?'RIGHT':R.relTraverse<-0.5?'LEFT':'ON TARGET';
-    const col=R.relTraverse>0.5?'ora':R.relTraverse<-0.5?'ora':'grn';
-    document.getElementById('bigRelTrav').textContent=(R.relTraverse>=0?'+':'')+R.relTraverse.toFixed(1);
-    document.getElementById('bigRelTrav').className='bbval '+col;
-    document.getElementById('bigRelTravUnit').textContent='DEGREES';
-    document.getElementById('bigRelTravSub').textContent='ROTATE '+dir+' from muzzle ('+R.muzzleBrg.toFixed(1)+'°)';
-  }
-
-  // Sub bar
-  const subChEl=document.getElementById('subCharge');
-  subChEl.textContent=R.chName+(R.outOfRange?' (!)':'');
-  subChEl.style.color=R.outOfRange?'var(--red)':'var(--grn)';
-  document.getElementById('subRange').textContent=fmtDist(R.dist);
-  document.getElementById('subRange').style.color=R.outOfRange?'var(--red)':'var(--ink)';
-  document.getElementById('subTOF').textContent=R.tof.toFixed(1)+'s';
-  document.getElementById('subOrd').textContent=R.maxOrd.toFixed(0)+'m';
-  const corSign=R.coriolisM>=0?'+':'';
-  document.getElementById('subCoriolis').textContent=corSign+R.coriolisM.toFixed(1)+'m E';
-
-  // Crew steps
-  const chBand=charges[R.chName];
-  const dcWarning=R.dangerClose.isDanger?[{a:false,warn:true,t:`&#9888;&#9888; <strong>DANGER CLOSE</strong>: Friendly forces ${R.dangerClose.friendlyDist}m away — minimum safe ${R.dangerClose.minSafe}m. HOLD FIRE until cleared.`}]:[];
-  const rangeWarnStep=R.outOfRange?[{a:false,warn:true,t:`&#9888; <strong>RANGE WARNING</strong>: ${fmtDist(R.dist)} ${R.tooClose?'below min':'exceeds max'}. VERIFY before firing.`}]:[];
-  const steps=[
-    ...dcWarning,...rangeWarnStep,
-    {a:true,t:R.relTraverse!==null
-      ?`TRAVERSE barrel <strong>${Math.abs(R.relTraverse).toFixed(1)}°</strong> <strong style="color:var(--red)">${R.relTraverse>0.5?'RIGHT':R.relTraverse<-0.5?'LEFT':'(ON TARGET)'}</strong> from current muzzle &mdash; final bearing <strong>${R.adjBrg.toFixed(1)}°</strong> (${R.adjDir})`
-      :`TRAVERSE barrel to <strong>${R.adjBrg.toFixed(1)}°</strong> (${R.adjDir})${Math.abs(R.lateralDrift)>2?` &mdash; wind+Coriolis adjusted from ${R.trueBrg.toFixed(1)}°`:''}`},
-    {a:true,t:`ELEVATE to <strong>${R.elevDeg.toFixed(2)}°</strong> / <strong>${R.elevMil} MIL</strong>${R.angleMode==='high'?' [HIGH ANGLE TRAJECTORY]':''}`},
-    {a:false,t:`TEMP CORRECTION: ${R.tempCorr}% v0 adjustment (${R.temp}°C). Adj muzzle vel: <strong>${R.v0adj.toFixed(1)} m/s</strong>`},
-    {a:true,t:`LOAD <strong>${R.chName}</strong> — ${R.chLbl} | v0=${chBand.v0}m/s (adj: ${R.v0adj.toFixed(1)}) | ${chBand.min}–${chBand.max}m`},
-    {a:false,t:`DROP round muzzle-down. Splash in <strong>${R.tof.toFixed(1)}s</strong>. Max height: <strong>${R.maxOrd.toFixed(0)}m</strong>`},
-    {a:false,t:`CORIOLIS: expect ~<strong>${Math.abs(R.coriolisM).toFixed(1)}m</strong> ${R.coriolisM>=0?'east':'west'} drift at ${GUN.lat.toFixed(1)}°N`},
-    ...(R.ws>0?[{a:false,t:`WIND: ${R.lateralDrift.toFixed(1)}m lateral drift from integrated wind+Coriolis correction`}]:[]),
-  ];
-  document.getElementById('crewSteps').innerHTML=steps.map((s,i)=>`
-    <div class="csi${s.warn?' csi-warn':''}${(s.warn&&i===0&&dcWarning.length)?' csi-danger':''}">
-      <div class="csi-num${s.a?' active':''}">${s.warn?'!':i-dcWarning.length-rangeWarnStep.length+1}</div>
-      <div class="csi-txt">${s.t}</div>
-    </div>`).join('');
-
-  // Compass
-  drawCompass(R.adjBrg,R.trueBrg,R.muzzleBrg);
-  document.getElementById('compassLbl').textContent=R.adjBrg.toFixed(1)+'° — '+R.adjDir;
-  document.getElementById('compassSub').textContent='TRAVERSE TO: '+R.adjBrg.toFixed(1)+'° ('+R.adjDir+')';
-
-  // Elevation profile
-  const pts=simTraj(R.elevDeg,R.v0adj,R.elevDiff,R.alt||0);
-  drawElev(pts,R.elevDeg,R.dist,R.maxOrd,R.elevDiff);
-  document.getElementById('elevLbl').textContent=R.elevDeg.toFixed(2)+'°';
-  document.getElementById('elevSub').textContent=`Elev: ${R.elevDeg.toFixed(2)}° / ${R.elevMil} mil  |  TOF: ${R.tof.toFixed(1)}s  |  Max height: ${R.maxOrd.toFixed(0)}m  |  ${R.angleMode==='high'?'HIGH ANGLE':'LOW ANGLE'}`;
-
-  // Nav grid
-  document.getElementById('navGrid').innerHTML=
-    dbox('RANGE TO TARGET',fmtDist(R.dist),'','big')+
-    dbox('TRUE BEARING',R.trueBrg.toFixed(2),'°')+
-    dbox('DIRECTION',R.dir)+
-    dbox('BACK BEARING',((R.trueBrg+180)%360).toFixed(1),'°');
-
-  // Ballistic grid
-  document.getElementById('balGrid').innerHTML=
-    dbox('BARREL ELEVATION',R.elevDeg.toFixed(2),'°','big')+
-    dbox('ELEVATION (MIL)',R.elevMil+'','mil','big')+
-    dbox('TRAVERSE BEARING',R.adjBrg.toFixed(2),'°','big')+
-    dbox('DIRECTION',R.adjDir)+
-    dbox('TRAJECTORY',R.angleMode==='high'?'HIGH ANGLE':'LOW ANGLE','')+
-    (R.muzzleBrg!==null?dbox('MUZZLE BRG',R.muzzleBrg.toFixed(1),'°'):dbox('MUZZLE BRG','NOT SET',''))+
-    (R.relTraverse!==null?dbox('REL TRAVERSE',(R.relTraverse>=0?'+':'')+R.relTraverse.toFixed(1)+'°  '+(R.relTraverse>0.5?'RIGHT':R.relTraverse<-0.5?'LEFT':'ON TGT'),'','big'):dbox('REL TRAVERSE','Set muzzle brg',''))+
-    dbox('CHARGE',R.chName)+
-    dbox('ADJ MUZZLE VEL',R.v0adj.toFixed(1),'m/s')+
-    dbox('TIME OF FLIGHT',R.tof.toFixed(2),'s','big')+
-    dbox('MAX ORDINATE',R.maxOrd.toFixed(0),'m');
-
-  // Wind panel
-  if(R.ws>0){
-    document.getElementById('windPanel').style.display='block';
-    document.getElementById('windGrid').innerHTML=
-      dbox('WIND SPEED',R.ws,'m/s')+
-      dbox('WIND DIR',R.wd,'°')+
-      dbox('LATERAL DRIFT',R.lateralDrift.toFixed(1),'m','red')+
-      dbox('BRG CORRECTION',DEG(R.deflRad).toFixed(2),'°');
-  } else {document.getElementById('windPanel').style.display='none';}
-
-  // Coriolis panel
-  document.getElementById('coriolisPanel').style.display='block';
-  document.getElementById('coriolisGrid').innerHTML=
-    dbox('CORIOLIS DRIFT',R.coriolisM.toFixed(1),'m')+
-    dbox('LATITUDE',GUN.lat.toFixed(3),'°'+(GUN.lat>=0?'N':'S'))+
-    dbox('TEMP CORRECTION',R.tempCorr,'% v0')+
-    dbox('ADJ V0',R.v0adj.toFixed(1),'m/s')+
-    dbox('GUN ALTITUDE',R.alt||0,'m ASL')+
-    dbox('AIR DENSITY',airDensityAtAlt(R.alt||0).toFixed(4),'kg/m³')+
-    dbox('DANGER CLOSE',W().dangerClose,'m')+
-    dbox('DC STATUS',R.dangerClose.isDanger?'DANGER!':R.dangerClose.friendlyDist>0?'CLEAR':'NO CHECK','',(R.dangerClose.isDanger?'red':R.dangerClose.friendlyDist>0?'grn':''));
-
-  // Coords
-  const gunMGRS=latLngToMGRS(R.gLat,R.gLng);
-  const tgtMGRS=latLngToMGRS(R.tLat,R.tLng);
-  document.getElementById('coordGun').innerHTML=`${R.gLat.toFixed(6)}°, ${R.gLng.toFixed(6)}°<br>${fmtDMS(R.gLat,true)}<br>${fmtDMS(R.gLng,false)}<br><span style="font-size:9px;letter-spacing:1px;color:var(--ink3);">MGRS: ${gunMGRS}</span>`;
-  document.getElementById('coordTgt').innerHTML=`${R.tLat.toFixed(6)}°, ${R.tLng.toFixed(6)}°<br>${fmtDMS(R.tLat,true)}<br>${fmtDMS(R.tLng,false)}<br><span style="font-size:9px;letter-spacing:1px;color:var(--ink3);">MGRS: ${tgtMGRS}</span>`;
-
-  drawMap();
-}
-
-function dbox(k,v,unit,cls){
-  return`<div class="dbox"><div class="dk">${k}</div><div class="dv ${cls||''}">${v}<span class="du">${unit||''}</span></div></div>`;
-}
-
-/* ═══════════════ DRAW COMPASS ═══════════════ */
-function drawCompass(adjBrg,trueBrg,muzzleBrg){
-  const cv=document.getElementById('compassCanvas');
-  const ctx=cv.getContext('2d');
-  const W2=cv.width,H=cv.height,cx=W2/2,cy=H/2,R=cx-6;
-  ctx.clearRect(0,0,W2,H);
-  const ink=getCSSVar('--ink'),ink3=getCSSVar('--ink3'),line=getCSSVar('--line'),red=getCSSVar('--red'),cbg=getCSSVar('--cbg');
-  ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.fillStyle=getCSSVar('--bg2');ctx.fill();
-  ctx.strokeStyle=ink3;ctx.lineWidth=2;ctx.stroke();
-  ctx.beginPath();ctx.arc(cx,cy,R-18,0,Math.PI*2);ctx.strokeStyle=line;ctx.lineWidth=0.8;ctx.stroke();
-  for(let i=0;i<72;i++){
-    const a=RAD(i*5),isMaj=i%18===0,isMed=i%6===0;
-    const r1=isMaj?R-28:isMed?R-22:R-16,r2=R-13;
-    ctx.beginPath();ctx.moveTo(cx+r1*Math.sin(a),cy-r1*Math.cos(a));ctx.lineTo(cx+r2*Math.sin(a),cy-r2*Math.cos(a));
-    ctx.strokeStyle=isMaj?ink:isMed?ink3:line;ctx.lineWidth=isMaj?2:isMed?1.2:0.6;ctx.stroke();
-  }
-  for(let i=1;i<12;i++){if(i%3===0)continue;const a=RAD(i*30),rv=R-38;
-    ctx.fillStyle=line;ctx.font='bold 8px Times New Roman';ctx.textAlign='center';ctx.textBaseline='middle';
-    ctx.fillText(i*30,cx+rv*Math.sin(a),cy-rv*Math.cos(a));}
-  [['N',cx,14,red],['E',W2-13,cy,ink],['S',cx,H-14,ink],['W',13,cy,ink]].forEach(([l,x,y,c])=>{
-    ctx.fillStyle=c;ctx.font='bold 13px Times New Roman';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(l,x,y);});
-  // Muzzle bearing
-  if(muzzleBrg!==null){
-    const mA=RAD(muzzleBrg);
-    ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+(R-20)*Math.sin(mA),cy-(R-20)*Math.cos(mA));
-    ctx.strokeStyle='#ff8800';ctx.lineWidth=3;ctx.stroke();
-    ctx.beginPath();ctx.moveTo(cx+(R-20)*Math.sin(mA),cy-(R-20)*Math.cos(mA));
-    ctx.lineTo(cx+(R-32)*Math.sin(mA-RAD(12)),cy-(R-32)*Math.cos(mA-RAD(12)));
-    ctx.lineTo(cx+(R-32)*Math.sin(mA+RAD(12)),cy-(R-32)*Math.cos(mA+RAD(12)));
-    ctx.closePath();ctx.fillStyle='#ff8800';ctx.fill();
-    ctx.fillStyle='#ff8800';ctx.font='bold 8px Times New Roman';ctx.textAlign='center';ctx.textBaseline='middle';
-    ctx.fillText('MUZ',cx+(R-44)*Math.sin(mA),cy-(R-44)*Math.cos(mA));
-  }
-  if(Math.abs(adjBrg-trueBrg)>0.5){
-    const a=RAD(trueBrg);ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+(R-30)*Math.sin(a),cy-(R-30)*Math.cos(a));
-    ctx.strokeStyle=line;ctx.lineWidth=1;ctx.setLineDash([4,5]);ctx.stroke();ctx.setLineDash([]);}
-  const a=RAD(adjBrg);
-  const tipX=cx+(R-14)*Math.sin(a),tipY=cy-(R-14)*Math.cos(a);
-  ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(tipX,tipY);ctx.strokeStyle=ink;ctx.lineWidth=3;ctx.stroke();
-  ctx.beginPath();ctx.moveTo(tipX,tipY);
-  ctx.lineTo(tipX-15*Math.sin(a-RAD(22)),tipY+15*Math.cos(a-RAD(22)));
-  ctx.lineTo(tipX-15*Math.sin(a+RAD(22)),tipY+15*Math.cos(a+RAD(22)));
-  ctx.closePath();ctx.fillStyle=ink;ctx.fill();
-  const ab=RAD((adjBrg+180)%360);
-  ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+(R-32)*Math.sin(ab),cy-(R-32)*Math.cos(ab));
-  ctx.strokeStyle=line;ctx.lineWidth=1.5;ctx.stroke();
-  ctx.beginPath();ctx.arc(cx,cy,8,0,Math.PI*2);ctx.fillStyle=getCSSVar('--bg2');ctx.fill();
-  ctx.strokeStyle=ink;ctx.lineWidth=2;ctx.stroke();
-  ctx.beginPath();ctx.arc(cx,cy,3,0,Math.PI*2);ctx.fillStyle=ink;ctx.fill();
-  ctx.fillStyle=ink;ctx.font='bold 16px Times New Roman';ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.fillText(adjBrg.toFixed(1)+'°',cx,cy+R*0.56);
-}
-
-/* ═══════════════ DRAW ELEVATION ═══════════════ */
-function drawElev(pts,elevDeg,rangeM,maxOrd,elevDelta){
-  const cv=document.getElementById('elevCanvas');
-  cv.width=cv.parentElement.offsetWidth||400;
-  const ctx=cv.getContext('2d');
-  const CW=cv.width,CH=cv.height,pad={l:46,r:14,t:24,b:36};
-  const pw=CW-pad.l-pad.r,ph=CH-pad.t-pad.b;
-  const ink=getCSSVar('--ink'),ink3=getCSSVar('--ink3'),dim=getCSSVar('--dim'),red=getCSSVar('--red'),line=getCSSVar('--line'),cbg=getCSSVar('--cbg');
-  ctx.clearRect(0,0,CW,CH);ctx.fillStyle=cbg;ctx.fillRect(0,0,CW,CH);
-  ctx.strokeStyle=line;ctx.lineWidth=0.6;
-  for(let i=0;i<=8;i++){
-    ctx.beginPath();ctx.moveTo(pad.l+i*pw/8,pad.t);ctx.lineTo(pad.l+i*pw/8,pad.t+ph);ctx.stroke();
-    ctx.beginPath();ctx.moveTo(pad.l,pad.t+i*ph/8);ctx.lineTo(pad.l+pw,pad.t+i*ph/8);ctx.stroke();}
-  if(!pts||pts.length<2) return;
-  const maxX=Math.max(...pts.map(p=>p.x));
-  const maxY=Math.max(...pts.map(p=>p.y));
-  const scX=pw/Math.max(maxX,rangeM*1.05),scY=ph/Math.max(maxY*1.2,10);
-  const mx=x=>pad.l+x*scX,my=y=>pad.t+ph-y*scY;
-  ctx.strokeStyle=ink3;ctx.lineWidth=1.5;
-  ctx.beginPath();ctx.moveTo(pad.l,my(0));ctx.lineTo(pad.l+pw,my(0));ctx.stroke();
-  if(elevDelta!==0){ctx.setLineDash([5,4]);ctx.strokeStyle=red+'55';ctx.lineWidth=1;
-    ctx.beginPath();ctx.moveTo(pad.l,my(elevDelta));ctx.lineTo(pad.l+pw,my(elevDelta));ctx.stroke();ctx.setLineDash([]);}
-  ctx.beginPath();pts.forEach((p,i)=>{i===0?ctx.moveTo(mx(p.x),my(p.y)):ctx.lineTo(mx(p.x),my(p.y));});
-  ctx.lineTo(mx(pts.at(-1).x),my(0));ctx.lineTo(pad.l,my(0));ctx.closePath();
-  ctx.fillStyle=isDark?'rgba(200,200,200,0.05)':'rgba(0,0,0,0.04)';ctx.fill();
-  ctx.beginPath();pts.forEach((p,i)=>{i===0?ctx.moveTo(mx(p.x),my(p.y)):ctx.lineTo(mx(p.x),my(p.y));});
-  ctx.strokeStyle=ink;ctx.lineWidth=2.5;ctx.stroke();
-  const pk=pts.reduce((a,b)=>b.y>a.y?b:a,pts[0]);
-  ctx.beginPath();ctx.arc(mx(pk.x),my(pk.y),5,0,Math.PI*2);ctx.fillStyle=red;ctx.fill();
-  ctx.fillStyle=red;ctx.font='bold 9px Times New Roman';ctx.textAlign='center';
-  ctx.fillText(maxOrd.toFixed(0)+'m',mx(pk.x),my(pk.y)-11);
-  ctx.beginPath();ctx.arc(pad.l,my(0),6,0,Math.PI*2);ctx.fillStyle=ink;ctx.fill();
-  ctx.fillStyle=ink3;ctx.font='bold 8px Times New Roman';ctx.textAlign='center';ctx.fillText('GUN',pad.l,my(0)+14);
-  const lp=pts.at(-1);
-  ctx.beginPath();ctx.moveTo(mx(lp.x),my(Math.max(elevDelta,0))-12);
-  ctx.lineTo(mx(lp.x)-7,my(Math.max(elevDelta,0)));ctx.lineTo(mx(lp.x)+7,my(Math.max(elevDelta,0)));
-  ctx.closePath();ctx.fillStyle=red;ctx.fill();
-  ctx.fillStyle=red;ctx.font='bold 8px Times New Roman';ctx.textAlign='center';ctx.fillText('TGT',mx(lp.x),my(Math.max(elevDelta,0))+13);
-  const gy=my(0);
-  ctx.beginPath();ctx.arc(pad.l,gy,42,RAD(-90),RAD(-90+elevDeg));
-  ctx.strokeStyle=ink+'88';ctx.lineWidth=1.5;ctx.setLineDash([3,3]);ctx.stroke();ctx.setLineDash([]);
-  ctx.fillStyle=ink;ctx.font='bold 10px Times New Roman';ctx.textAlign='left';ctx.fillText(elevDeg.toFixed(1)+'°',pad.l+47,gy-15);
-  ctx.fillStyle=dim;ctx.font='bold 7px Times New Roman';ctx.textAlign='center';
-  for(let i=0;i<=4;i++) ctx.fillText((maxX/4*i/1000).toFixed(1)+'km',pad.l+i*pw/4,pad.t+ph+14);
-  ctx.textAlign='right';
-  for(let i=1;i<=4;i++) ctx.fillText((maxY/4*i).toFixed(0)+'m',pad.l-4,my(maxY/4*i)+3);
-}
-
-/* ═══════════════ DRAW MAP ═══════════════ */
-function drawMap(){
-  const R=RES;
-  const cv=document.getElementById('mapCanvas');
-  cv.width=cv.parentElement.offsetWidth||700;
-  const ctx=cv.getContext('2d');
-  const CW=cv.width,CH=cv.height,pad=44;
-  const ink=getCSSVar('--ink'),ink3=getCSSVar('--ink3'),dim=getCSSVar('--dim'),red=getCSSVar('--red'),line=getCSSVar('--line'),cbg=getCSSVar('--cbg');
-  ctx.clearRect(0,0,CW,CH);ctx.fillStyle=cbg;ctx.fillRect(0,0,CW,CH);
-  ctx.strokeStyle=line;ctx.lineWidth=0.6;
-  for(let i=0;i<=20;i++){
-    ctx.beginPath();ctx.moveTo(i*CW/20,0);ctx.lineTo(i*CW/20,CH);ctx.stroke();
-    ctx.beginPath();ctx.moveTo(0,i*CH/20);ctx.lineTo(CW,i*CH/20);ctx.stroke();}
-  const dLat=Math.abs(R.tLat-R.gLat)||.008,dLng=Math.abs(R.tLng-R.gLng)||.008;
-  const span=Math.max(dLat,dLng)*1.55;
-  const cLat=(R.gLat+R.tLat)/2,cLng=(R.gLng+R.tLng)/2;
-  const lMin=cLat-span/2,lMax=cLat+span/2,nMin=cLng-span/2,nMax=cLng+span/2;
-  const c=(lat,lng)=>({x:pad+(lng-nMin)/(nMax-nMin)*(CW-pad*2),y:pad+(lMax-lat)/(lMax-lMin)*(CH-pad*2)});
-  const gc=c(R.gLat,R.gLng),tc=c(R.tLat,R.tLng);
-  const scalePx=Math.sqrt((tc.x-gc.x)**2+(tc.y-gc.y)**2)/R.dist;
-
-  // Range rings
-  [0.25,0.5,0.75,1.0].forEach(f=>{
-    const rr=R.dist*f*scalePx;
-    ctx.beginPath();ctx.arc(gc.x,gc.y,rr,0,Math.PI*2);
-    ctx.strokeStyle=f===1?ink3+'88':line+'88';ctx.lineWidth=f===1?1.2:.7;
-    ctx.setLineDash([4,6]);ctx.stroke();ctx.setLineDash([]);
-    if(f<1){ctx.fillStyle=dim;ctx.font='bold 8px Times New Roman';ctx.textAlign='left';
-      ctx.fillText((R.dist*f/1000).toFixed(2)+'km',gc.x+rr+4,gc.y);}});
-
-  // Danger close circle
-  if(R.dangerClose.friendlyDist>0){
-    const dcR=R.dangerClose.minSafe*scalePx;
-    ctx.beginPath();ctx.arc(tc.x,tc.y,dcR,0,Math.PI*2);
-    ctx.strokeStyle=red;ctx.lineWidth=1.5;ctx.setLineDash([6,4]);ctx.stroke();ctx.setLineDash([]);
-    ctx.fillStyle=red+'22';ctx.fill();
-    ctx.fillStyle=red;ctx.font='bold 8px Times New Roman';ctx.textAlign='center';
-    ctx.fillText('DC '+R.dangerClose.minSafe+'m',tc.x,tc.y-dcR-5);}
-
-  // Bearing line
-  ctx.beginPath();ctx.moveTo(gc.x,gc.y);ctx.lineTo(tc.x,tc.y);
-  ctx.strokeStyle=dim;ctx.lineWidth=1;ctx.setLineDash([7,5]);ctx.stroke();ctx.setLineDash([]);
-  const ar=RAD(R.adjBrg);
-  const aLen=Math.min(R.dist*scalePx*1.25,Math.min(CW,CH)*.42);
-  ctx.beginPath();ctx.moveTo(gc.x,gc.y);ctx.lineTo(gc.x+aLen*Math.sin(ar),gc.y-aLen*Math.cos(ar));
-  ctx.strokeStyle=ink;ctx.lineWidth=2;ctx.stroke();
-  const ax=gc.x+aLen*Math.sin(ar),ay=gc.y-aLen*Math.cos(ar);
-  ctx.beginPath();ctx.moveTo(ax,ay);
-  ctx.lineTo(ax-13*Math.sin(ar-RAD(22)),ay+13*Math.cos(ar-RAD(22)));
-  ctx.lineTo(ax-13*Math.sin(ar+RAD(22)),ay+13*Math.cos(ar+RAD(22)));
-  ctx.closePath();ctx.fillStyle=ink;ctx.fill();
-  // Gun
-  ctx.beginPath();ctx.arc(gc.x,gc.y,10,0,Math.PI*2);ctx.fillStyle='rgba(128,128,128,0.1)';ctx.fill();
-  ctx.strokeStyle=ink;ctx.lineWidth=2;ctx.stroke();
-  ctx.beginPath();ctx.arc(gc.x,gc.y,4,0,Math.PI*2);ctx.fillStyle=ink;ctx.fill();
-  ctx.fillStyle=ink;ctx.font='bold 10px Times New Roman';ctx.textAlign='left';ctx.fillText('* GUN',gc.x+13,gc.y+4);
-  // Target
-  ctx.beginPath();ctx.moveTo(tc.x,tc.y-14);ctx.lineTo(tc.x-8,tc.y+5);ctx.lineTo(tc.x+8,tc.y+5);
-  ctx.closePath();ctx.fillStyle=red+'22';ctx.fill();ctx.strokeStyle=red;ctx.lineWidth=2;ctx.stroke();
-  ctx.fillStyle=red;ctx.font='bold 10px Times New Roman';ctx.textAlign='left';ctx.fillText('TGT',tc.x+12,tc.y+4);
-  ctx.fillStyle=ink3;ctx.font='bold 8px Times New Roman';
-  ctx.fillText(R.adjBrg.toFixed(1)+'°  —  '+fmtDist(R.dist),tc.x+12,tc.y+15);
-  ctx.beginPath();ctx.moveTo(tc.x-16,tc.y);ctx.lineTo(tc.x+16,tc.y);
-  ctx.moveTo(tc.x,tc.y-16);ctx.lineTo(tc.x,tc.y+16);
-  ctx.strokeStyle=red+'44';ctx.lineWidth=1;ctx.stroke();
-  // North arrow
-  ctx.beginPath();ctx.moveTo(CW-28,28);ctx.lineTo(CW-28,14);ctx.strokeStyle=ink;ctx.lineWidth=1.5;ctx.stroke();
-  ctx.beginPath();ctx.moveTo(CW-28,14);ctx.lineTo(CW-23,24);ctx.lineTo(CW-33,24);ctx.closePath();ctx.fillStyle=ink;ctx.fill();
-  ctx.fillStyle=ink;ctx.font='bold 10px Times New Roman';ctx.textAlign='center';ctx.fillText('N',CW-28,11);
-  // Scale bar
-  const barKm=Math.max(.05,Math.round(R.dist/1000/4*20)/20);
-  const barPx=barKm*1000*scalePx;
-  ctx.strokeStyle=ink;ctx.lineWidth=1.5;
-  ctx.beginPath();ctx.moveTo(pad,CH-pad+10);ctx.lineTo(pad+barPx,CH-pad+10);ctx.stroke();
-  ctx.beginPath();ctx.moveTo(pad,CH-pad+6);ctx.lineTo(pad,CH-pad+14);ctx.stroke();
-  ctx.beginPath();ctx.moveTo(pad+barPx,CH-pad+6);ctx.lineTo(pad+barPx,CH-pad+14);ctx.stroke();
-  ctx.fillStyle=ink;ctx.font='bold 8px Times New Roman';ctx.textAlign='center';
-  ctx.fillText(barKm<1?(barKm*1000).toFixed(0)+'m':barKm+'km',pad+barPx/2,CH-pad+22);
-}
-
-/* ═══════════════ HISTORY — PERSISTENT ═══════════════ */
-const HIST_KEY='mfcs-hist-v4';
-function saveHistory(){
-  try{localStorage.setItem(HIST_KEY,JSON.stringify(HIST.slice(0,20)));}catch(e){}
-}
-function loadHistory(){
-  try{const d=localStorage.getItem(HIST_KEY);if(d)HIST=JSON.parse(d);}catch(e){HIST=[];}
-}
-function clearHistory(){
-  if(!confirm('Clear all mission history?')) return;
-  HIST=[];saveHistory();renderHist();
-}
-function renderHist(){
-  document.getElementById('histCount').textContent=HIST.length+' ENTR'+(HIST.length===1?'Y':'IES');
-  const el=document.getElementById('histList');
-  if(!HIST.length){el.innerHTML='<div style="font-size:9px;letter-spacing:2px;color:var(--dim);padding:8px 0;">NO MISSIONS LOGGED</div>';return;}
-  el.innerHTML=HIST.map((r,i)=>`
-    <div class="hrow${i===0?' latest':''}" onclick="loadHist(${i})">
-      <div><div class="hk">TIME</div><div class="hv">${r.time||'-'}</div>${r.dangerClose&&r.dangerClose.isDanger?'<div class="danger-flag">⚠ DC</div>':''}</div>
-      <div><div class="hk">WEAPON</div><div class="hv">${r.weaponLabel||r.weapon+'mm'}</div></div>
-      <div><div class="hk">RANGE</div><div class="hv">${fmtDist(r.dist)}</div></div>
-      <div><div class="hk">BRG / ELEV</div><div class="hv">${r.adjBrg.toFixed(1)}° / ${r.elevDeg.toFixed(1)}°</div></div>
-      <div><div class="hk">CHARGE / TOF</div><div class="hv">${r.chName} / ${r.tof.toFixed(1)}s</div></div>
-      <div><div class="hk">CAL</div><div class="hv">${r.weapon||'?'}mm</div></div>
-    </div>`).join('');
-}
-function loadHist(i){
-  const r=HIST[i];
-  if(r.weapon&&r.weapon!==ACTIVE_WPN) selectWeapon(r.weapon);
-  document.getElementById('tLat').value=r.tLat;
-  document.getElementById('tLng').value=r.tLng;
-  document.getElementById('tElev').value=r.elevDiff||0;
-  RES=r;render();
-  document.getElementById('solBlock').style.display='block';
-  document.getElementById('solBlock').scrollIntoView({behavior:'smooth',block:'start'});
-}
-
-/* ═══════════════ FIRE MISSION EXPORT ═══════════════ */
-function exportFireMission(){
-  if(!RES) return;
-  const R=RES;
-  const gunMGRS=latLngToMGRS(R.gLat,R.gLng);
-  const tgtMGRS=latLngToMGRS(R.tLat,R.tLng);
-  const card=
-`=== MORTAR FCS — FIRE MISSION CARD ===
-TIME: ${R.utcTime||R.time}
-WEAPON: ${R.weaponLabel} (${R.weapon}mm)
-TRAJECTORY: ${R.angleMode==='high'?'HIGH ANGLE':'LOW ANGLE'}
-
---- FIRE COMMAND ---
-DIRECTION:     ${R.adjBrg.toFixed(1)}° (${R.adjDir})
-ELEVATION:     ${R.elevDeg.toFixed(2)}° / ${R.elevMil} MIL
-CHARGE:        ${R.chName} — ${R.chLbl}
-${R.relTraverse!==null?`REL TRAVERSE:  ${(R.relTraverse>=0?'+':'')+R.relTraverse.toFixed(1)}° ${R.relTraverse>0.5?'RIGHT':R.relTraverse<-0.5?'LEFT':'ON TARGET'} from muzzle (${R.muzzleBrg.toFixed(1)}°)`:'REL TRAVERSE:  (muzzle bearing not set)'}
-
---- BALLISTICS ---
-RANGE:         ${fmtDist(R.dist)}
-TIME OF FLIGHT:${R.tof.toFixed(1)}s
-MAX ORDINATE:  ${R.maxOrd.toFixed(0)}m
-ADJ MUZZLE VEL:${R.v0adj.toFixed(1)} m/s (temp corr: ${R.tempCorr}%)
-CORIOLIS:      ${R.coriolisM.toFixed(1)}m eastward
-LATERAL DRIFT: ${R.lateralDrift.toFixed(1)}m (wind+Coriolis)
-
---- CONDITIONS ---
-TEMPERATURE:   ${R.temp}°C
-WIND:          ${R.ws}m/s FROM ${R.wd}°
-GUN ALTITUDE:  ${R.alt||0}m ASL
-
---- POSITIONS ---
-GUN: ${R.gLat.toFixed(6)}°, ${R.gLng.toFixed(6)}°
-     ${fmtDMS(R.gLat,true)} / ${fmtDMS(R.gLng,false)}
-     MGRS: ${gunMGRS}
-TGT: ${R.tLat.toFixed(6)}°, ${R.tLng.toFixed(6)}°
-     ${fmtDMS(R.tLat,true)} / ${fmtDMS(R.tLng,false)}
-     MGRS: ${tgtMGRS}
-
-${R.dangerClose.isDanger?'!!! DANGER CLOSE !!! Friendly forces '+R.dangerClose.friendlyDist+'m — min safe '+R.dangerClose.minSafe+'m !!!':'DANGER CLOSE: CLEAR'}
-
-MORTAR-FCS v4.0 — WGS84 — ISA ATMOSPHERE — CORIOLIS CORRECTED
-=====================================`;
-  navigator.clipboard.writeText(card).then(()=>showToast('FIRE MISSION CARD COPIED')).catch(()=>{
-    const ta=document.createElement('textarea');ta.value=card;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);showToast('COPIED');
-  });
-}
-function showToast(msg){
-  const t=document.getElementById('toast');
-  t.textContent=msg;t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'),2500);
-}
-
-/* ═══════════════ MUZZLE BEARING ═══════════════ */
-function setMuzUI(state,msg){
-  const dot=document.getElementById('muzDot'),txt=document.getElementById('muzTxt'),clearBtn=document.getElementById('muzClearBtn');
-  if(state==='searching'){dot.className='dot dot-y';txt.style.color='var(--yel)';txt.textContent='POINT PHONE ALONG BARREL → READING...';clearBtn.style.display='none';}
-  else if(state==='locked'){dot.className='dot dot-g';txt.style.color='var(--grn)';txt.textContent='BEARING LOCKED';clearBtn.style.display='inline-block';}
-  else if(state==='error'){dot.className='dot dot-r';txt.style.color='var(--red)';txt.textContent=msg||'COMPASS ERROR';clearBtn.style.display='none';}
-  else{dot.className='dot dot-off';txt.style.color='var(--dim)';txt.textContent='BEARING NOT SET';clearBtn.style.display='none';}
-}
-function setMuzBearing(bearing,source){
-  MUZ.bearing=bearing;MUZ.mode=source;
-  setMuzUI('locked');
-  document.getElementById('muzDisp').style.display='block';
-  document.getElementById('manMuz').style.display='none';
-  document.getElementById('muzDispVal').textContent=bearing.toFixed(1)+'°';
-  document.getElementById('muzDispDir').textContent=dirLbl(bearing);
-  document.getElementById('muzDispSrc').textContent=source==='auto'?'COMPASS AUTO':'MANUAL ENTRY';
-  updateMuzDisplay();
-  if(RES) render();
-}
-function retryCompass(){
-  if(typeof DeviceOrientationEvent==='undefined'){setMuzUI('error','COMPASS NOT AVAILABLE');return;}
-  setMuzUI('searching');
-  document.getElementById('muzDisp').style.display='none';
-  document.getElementById('manMuz').style.display='none';
-  if(typeof DeviceOrientationEvent.requestPermission==='function'){
-    DeviceOrientationEvent.requestPermission().then(s=>{
-      if(s==='granted')_doCompassRead();else setMuzUI('error','COMPASS PERMISSION DENIED');
-    }).catch(()=>setMuzUI('error','COMPASS PERMISSION ERROR'));
-  } else {_doCompassRead();}
-}
-function _doCompassRead(){
-  const readings=[],TARGET=20;
-  let done=false,gotAbsolute=false,timer=null,countInterval=null;
-  function getHeading(e){
-    if(typeof e.webkitCompassHeading==='number'&&e.webkitCompassHeading>=0) return e.webkitCompassHeading;
-    if(e.alpha!==null&&e.alpha!==undefined) return(360-e.alpha+360)%360;
-    return null;
-  }
-  function onAbsolute(e){if(done)return;const h=getHeading(e);if(h!==null){readings.push(h);gotAbsolute=true;}if(readings.length>=TARGET)finish();}
-  function onRelative(e){if(done||gotAbsolute)return;const h=getHeading(e);if(h!==null)readings.push(h);if(readings.length>=TARGET)finish();}
-  function cleanup(){done=true;window.removeEventListener('deviceorientationabsolute',onAbsolute);window.removeEventListener('deviceorientation',onRelative);if(timer)clearTimeout(timer);if(countInterval)clearInterval(countInterval);}
-  function finish(){if(done)return;cleanup();if(readings.length===0){setMuzUI('error','NO COMPASS DATA');return;}setMuzBearing(circularMean(readings),'auto');}
-  window.addEventListener('deviceorientationabsolute',onAbsolute,{passive:true});
-  window.addEventListener('deviceorientation',onRelative,{passive:true});
-  countInterval=setInterval(()=>{if(done)return;const t=document.getElementById('muzTxt');if(t)t.textContent='READING… '+readings.length+'/'+TARGET+' samples';},300);
-  timer=setTimeout(()=>finish(),6000);
-}
-function toggleManMuz(){const p=document.getElementById('manMuz');p.style.display=p.style.display==='none'?'block':'none';if(p.style.display==='block')document.getElementById('muzDisp').style.display='none';}
-function applyMuzManual(){
-  const v=parseFloat(document.getElementById('muzManInput').value);
-  if(isNaN(v)||v<0||v>360){document.getElementById('muzManInput').style.borderColor='var(--red)';return;}
-  document.getElementById('muzManInput').style.borderColor='var(--grn)';
-  setMuzBearing((v%360+360)%360,'manual');
-}
-function clearMuzBearing(){
-  MUZ.bearing=null;MUZ.mode='off';
-  document.getElementById('muzManInput').value='';
-  document.getElementById('muzManInput').style.borderColor='';
-  document.getElementById('muzDisp').style.display='none';
-  document.getElementById('manMuz').style.display='none';
-  setMuzUI('none');updateMuzDisplay();if(RES)render();
-}
-function updateMuzDisplay(){
-  const val=document.getElementById('muzVal'),sub=document.getElementById('muzSub'),badge=document.getElementById('muzBadge');
-  if(MUZ.bearing===null){
-    val.textContent='NOT SET';val.className='muz-val not-set';
-    sub.textContent='Relative traverse not available.';
-    badge.textContent='NO REFERENCE';badge.className='muz-badge none';
-  } else {
-    val.textContent=MUZ.bearing.toFixed(1)+'°';val.className='muz-val';
-    sub.textContent='Barrel facing '+MUZ.bearing.toFixed(1)+'° ('+dirLbl(MUZ.bearing)+')';
-    badge.textContent=MUZ.mode==='auto'?'COMPASS AUTO':'MANUAL';
-    badge.className='muz-badge '+(MUZ.mode==='auto'?'auto':'manual');
-  }
-}
-function calcRelTraverse(targetBrg,muzzleBrg){let r=targetBrg-muzzleBrg;while(r>180)r-=360;while(r<-180)r+=360;return r;}
-function circularMean(angles){let sx=0,sy=0;angles.forEach(a=>{sx+=Math.cos(RAD(a));sy+=Math.sin(RAD(a));});return(DEG(Math.atan2(sy/angles.length,sx/angles.length))+360)%360;}
-function onMuzManInput(){const v=parseFloat(document.getElementById('muzManInput').value);if(!isNaN(v))document.getElementById('muzManInput').style.borderColor='var(--grn)';}
-
-/* ═══════════════ WEATHER ═══════════════ */
-function wxSetStatus(state,msg){
-  const badge=document.getElementById('wxStatusBadge'),row=document.getElementById('wxStatusRow'),btn=document.getElementById('wxFetchBtn');
-  row.style.display=msg?'block':'none';row.textContent=msg||'';
-  if(state==='ok'){badge.textContent='LIVE WEATHER';badge.style.color='var(--grn)';badge.style.borderColor='var(--grn)';badge.style.background='var(--rok)';row.style.borderLeftColor='var(--grn)';row.style.color='var(--grn)';btn.textContent='↺ REFRESH';btn.disabled=false;}
-  else if(state==='fetching'){badge.textContent='FETCHING…';badge.style.color='var(--yel)';badge.style.borderColor='var(--yel)';badge.style.background='var(--rwarn)';btn.textContent='…';btn.disabled=true;}
-  else if(state==='err'){badge.textContent='FETCH FAILED';badge.style.color='var(--red)';badge.style.borderColor='var(--red)';badge.style.background='var(--rerr)';btn.textContent='↺ RETRY';btn.disabled=false;}
-  else{badge.textContent='MANUAL';badge.style.color='var(--dim)';badge.style.borderColor='var(--line)';badge.style.background='var(--bg3)';btn.textContent='↺ AUTO-FETCH';btn.disabled=false;}
-}
-function wxSetManual(){WX_SOURCE='manual';wxSetStatus('manual');}
-async function fetchWeather(){
-  if(!navigator.onLine){wxSetStatus('err','OFFLINE — USE MANUAL');return;}
-  wxSetStatus('fetching','CONTACTING WEATHER SERVICE…');
-  try{
-    let lat,lng;
-    if(GUN){lat=GUN.lat;lng=GUN.lng;}
-    else{wxSetStatus('fetching','NO GPS — USING IP LOCATION…');const r=await fetch('https://ipapi.co/json/');if(!r.ok)throw new Error('IP geo failed');const d=await r.json();lat=d.latitude;lng=d.longitude;}
-    const url=`https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lng.toFixed(4)}&current=temperature_2m,wind_speed_10m,wind_direction_10m&wind_speed_unit=ms&timezone=auto`;
-    const ctrl=new AbortController();const tid=setTimeout(()=>ctrl.abort(),8000);
-    const resp=await fetch(url,{signal:ctrl.signal});clearTimeout(tid);
-    if(!resp.ok) throw new Error('HTTP '+resp.status);
-    const data=await resp.json();const c=data.current;
-    document.getElementById('wSpd').value=parseFloat(c.wind_speed_10m).toFixed(1);
-    document.getElementById('wDir').value=Math.round(c.wind_direction_10m);
-    document.getElementById('temp').value=Math.round(c.temperature_2m);
-    WX_SOURCE='auto';
-    wxSetStatus('ok',`WIND ${parseFloat(c.wind_speed_10m).toFixed(1)}m/s FROM ${Math.round(c.wind_direction_10m)}°  ·  TEMP ${Math.round(c.temperature_2m)}°C`);
-    autoCalc();
-  }catch(e){wxSetStatus('err',navigator.onLine?'WEATHER FETCH FAILED':'OFFLINE');}
-}
-function tryAutoWeather(){if(navigator.onLine&&WX_SOURCE!=='auto')fetchWeather();}
-
-/* ═══════════════ PWA ═══════════════ */
-let deferredInstall=null;
-window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstall=e;document.getElementById('installBanner').classList.add('show');});
-window.addEventListener('appinstalled',()=>{document.getElementById('installBanner').classList.remove('show');deferredInstall=null;});
-function doInstall(){if(!deferredInstall)return;deferredInstall.prompt();deferredInstall.userChoice.then(c=>{if(c.outcome==='accepted')document.getElementById('installBanner').classList.remove('show');deferredInstall=null;});}
-function dismissInstall(){document.getElementById('installBanner').classList.remove('show');}
-window.addEventListener('online',()=>document.getElementById('offlineBadge').classList.remove('show'));
-window.addEventListener('offline',()=>document.getElementById('offlineBadge').classList.add('show'));
-if(!navigator.onLine) document.getElementById('offlineBadge').classList.add('show');
-
-if('serviceWorker' in navigator&&(location.protocol==='https:'||location.protocol==='http:')){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
-}
-
-/* ═══════════════ INIT ═══════════════ */
-loadHistory();
-selectWeapon('60');
-updFireBtn();
-retryGPS();
-updateMuzDisplay();
-setMuzUI('none');
-renderHist();
-window.addEventListener('resize',()=>{if(RES)render();});
-
-/* ═══════════════════════════════════════
-   LIVE BARREL ALIGNMENT COMPASS
-   - Compass rose rotates with phone heading
-   - White arrow always points at TARGET bearing (absolute)
-   - Delta readout = degrees left/right to rotate phone
-   - Alignment lock when within ±3°
-═══════════════════════════════════════ */
-let LC = {
-  active: false,
-  heading: null,       // current phone heading (0-360°)
-  targetBrg: null,     // required traverse bearing from RES
-  rafId: null,
-  smoothed: null,      // smoothed heading for canvas
-};
-
-function startLiveCompass() {
-  // Show iOS permission note if needed
-  if (typeof DeviceOrientationEvent !== 'undefined' &&
-      typeof DeviceOrientationEvent.requestPermission === 'function') {
-    document.getElementById('liveCompPermNote').style.display = 'block';
-    DeviceOrientationEvent.requestPermission()
-      .then(state => {
-        document.getElementById('liveCompPermNote').style.display = 'none';
-        if (state === 'granted') _lcActivate();
-        else _lcSetBadge('error', 'SENSOR DENIED');
-      })
-      .catch(() => _lcSetBadge('error', 'SENSOR ERROR'));
-    return;
-  }
-  _lcActivate();
-}
-
-function _lcActivate() {
-  LC.active = true;
-  document.getElementById('liveCompStartBtn').style.display = 'none';
-  document.getElementById('liveCompStopBtn').style.display = '';
-  document.getElementById('liveCompBody').style.display = 'block';
-  _lcSetBadge('active', 'ACTIVE');
-  window.addEventListener('deviceorientationabsolute', _lcOnOrient, { passive: true });
-  window.addEventListener('deviceorientation',         _lcOnOrient, { passive: true });
-  LC.rafId = requestAnimationFrame(_lcDraw);
-}
-
-function stopLiveCompass() {
-  LC.active = false;
-  LC.heading = null; LC.smoothed = null;
-  window.removeEventListener('deviceorientationabsolute', _lcOnOrient);
-  window.removeEventListener('deviceorientation',         _lcOnOrient);
-  if (LC.rafId) { cancelAnimationFrame(LC.rafId); LC.rafId = null; }
-  document.getElementById('liveCompStartBtn').style.display = '';
-  document.getElementById('liveCompStopBtn').style.display = 'none';
-  document.getElementById('liveCompBody').style.display = 'none';
-  _lcSetBadge('inactive', 'INACTIVE');
-}
-
-function _lcOnOrient(e) {
-  let h = null;
-  if (typeof e.webkitCompassHeading === 'number' && e.webkitCompassHeading >= 0) {
-    h = e.webkitCompassHeading;                  // iOS: direct magnetic CW
-  } else if (e.alpha !== null && e.alpha !== undefined) {
-    h = (360 - e.alpha + 360) % 360;             // Android: CCW alpha → CW
-  }
-  if (h === null) return;
-  LC.heading = h;
-}
-
-function _lcSetBadge(state, txt) {
-  const b = document.getElementById('liveCompBadge');
-  b.textContent = txt;
-  if (state === 'active')       { b.style.color='var(--grn)'; b.style.borderColor='var(--grn)'; b.style.background='var(--rok)'; }
-  else if (state === 'locked')  { b.style.color='var(--bg)';  b.style.borderColor='var(--grn)'; b.style.background='var(--grn)'; }
-  else if (state === 'error')   { b.style.color='var(--red)'; b.style.borderColor='var(--red)'; b.style.background='var(--rerr)'; }
-  else                          { b.style.color='var(--dim)'; b.style.borderColor='var(--line)'; b.style.background='var(--bg3)'; }
-}
-
-/* Smooth angle using shortest-path lerp to prevent wrap-around jumps */
-function _lcLerpAngle(a, b, t) {
-  let diff = ((b - a + 540) % 360) - 180;
-  return (a + diff * t + 360) % 360;
-}
-
-function _lcDraw() {
-  if (!LC.active) return;
-  LC.rafId = requestAnimationFrame(_lcDraw);
-
-  // Pull target bearing from latest solution
-  const tBrg = RES ? RES.adjBrg : null;
-  LC.targetBrg = tBrg;
-
-  const phone = LC.heading;
-
-  // Smooth heading
-  if (phone !== null) {
-    if (LC.smoothed === null) LC.smoothed = phone;
-    else LC.smoothed = _lcLerpAngle(LC.smoothed, phone, 0.12);
-  }
-
-  // Update numeric readouts
-  const hdgEl   = document.getElementById('lcPhoneHdg');
-  const hdgDir  = document.getElementById('lcPhoneDir');
-  const tBrgEl  = document.getElementById('lcTargetBrg');
-  const tDirEl  = document.getElementById('lcTargetDir');
-  const deltaEl = document.getElementById('lcDeltaVal');
-  const deltaDr = document.getElementById('lcDeltaDir');
-  const bar     = document.getElementById('lcAlignBar');
-
-  if (phone === null) {
-    hdgEl.textContent = '---'; hdgDir.textContent = '--';
-    deltaEl.textContent = '---'; deltaDr.textContent = 'NO SENSOR';
-    bar.textContent = 'NO COMPASS SENSOR — USE MANUAL BEARING';
-    bar.style.borderColor = 'var(--red)'; bar.style.color = 'var(--red)'; bar.style.background = 'var(--rerr)';
-  } else {
-    hdgEl.textContent = Math.round(phone) + '°';
-    hdgDir.textContent = dirLbl(phone);
-  }
-
-  if (tBrg === null) {
-    tBrgEl.textContent = '---'; tDirEl.textContent = '--';
-    deltaEl.textContent = '---'; deltaDr.textContent = 'COMPUTE SOLUTION FIRST';
-    bar.textContent = 'NO SOLUTION — ENTER TARGET & COMPUTE';
-    bar.style.borderColor = 'var(--yel)'; bar.style.color = 'var(--yel)'; bar.style.background = 'var(--rwarn)';
-  } else {
-    tBrgEl.textContent = tBrg.toFixed(1) + '°';
-    tDirEl.textContent = dirLbl(tBrg);
-
-    if (phone !== null) {
-      // Delta: positive = turn RIGHT, negative = turn LEFT
-      let delta = ((tBrg - phone + 540) % 360) - 180;
-      const absDelta = Math.abs(delta);
-      const turnDir  = absDelta < 1 ? 'ON TARGET' : delta > 0 ? 'TURN RIGHT ▶' : '◀ TURN LEFT';
-      deltaEl.textContent = absDelta < 1 ? '0°' : Math.abs(delta).toFixed(1) + '°';
-
-      // Colour by proximity
-      if (absDelta <= 3) {
-        deltaEl.style.color = 'var(--grn)';
-        deltaDr.textContent = '✓ ALIGNED';
-        deltaDr.style.color = 'var(--grn)';
-        bar.textContent = '✓ BARREL ALIGNED — FIRE SOLUTION VALID';
-        bar.style.borderColor = 'var(--grn)'; bar.style.color = 'var(--grn)'; bar.style.background = 'var(--rok)';
-        _lcSetBadge('locked', 'ALIGNED ✓');
-      } else if (absDelta <= 15) {
-        deltaEl.style.color = 'var(--yel)';
-        deltaDr.textContent = turnDir;
-        deltaDr.style.color = 'var(--yel)';
-        bar.textContent = 'CLOSE — ' + turnDir + '  (' + Math.abs(delta).toFixed(1) + '° remaining)';
-        bar.style.borderColor = 'var(--yel)'; bar.style.color = 'var(--yel)'; bar.style.background = 'var(--rwarn)';
-        _lcSetBadge('active', 'ACTIVE');
-      } else {
-        deltaEl.style.color = 'var(--red)';
-        deltaDr.textContent = turnDir;
-        deltaDr.style.color = 'var(--red)';
-        bar.textContent = turnDir + '  —  ' + Math.abs(delta).toFixed(1) + '° to target bearing ' + tBrg.toFixed(1) + '°';
-        bar.style.borderColor = 'var(--red)'; bar.style.color = 'var(--red)'; bar.style.background = 'var(--rerr)';
-        _lcSetBadge('active', 'ACTIVE');
+    function parseDegreesOnly(raw) {
+      if (raw === null || raw === undefined) return null;
+      const s = cleanCoordText(raw)
+        .replace(/°/g, ' ')
+        .replace(/['’]/g, ' ')
+        .replace(/"/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      if (!s) return null;
+      if (/^[+-]?\d*\.?\d+(?:[eE][+-]?\d+)?$/.test(s)) {
+        const n = Number(s);
+        if (Number.isFinite(n)) return n;
       }
+      return null;
     }
-  }
 
-  // Draw canvas
-  _lcDrawCanvas(LC.smoothed, tBrg);
-}
+    function degFromDMSString(str) {
+      const s = cleanCoordText(str)
+        .replace(/°/g, ' ')
+        .replace(/['’]/g, ' ')
+        .replace(/"/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      if (!s) return null;
 
-function _lcDrawCanvas(phoneHdg, tBrg) {
-  const cv = document.getElementById('liveCompCanvas');
-  if (!cv) return;
-  const ctx = cv.getContext('2d');
-  const CW = cv.width, CH = cv.height;
-  const cx = CW / 2, cy = CH / 2;
-  const R = cx - 8;
+      const hemiMatch = s.match(/([NSEW])\s*$/i);
+      const hemi = hemiMatch ? hemiMatch[1].toUpperCase() : null;
+      const digits = hemi ? s.slice(0, -hemi.length).trim() : s;
+      const m = digits.match(/^([+-]?\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)\s*(\d+(?:\.\d+)?)?$/);
+      if (!m) {
+        const mm = digits.match(/^([+-]?\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)$/);
+        if (!mm) return null;
+        const d = Number(mm[1]);
+        const min = Number(mm[2]);
+        const val = Math.abs(d) + (min / 60);
+        return (hemi === 'S' || hemi === 'W' || (digits.startsWith('-') && !hemi)) ? -val : val;
+      }
+      const d = Number(m[1]);
+      const min = Number(m[2] || 0);
+      const sec = Number(m[3] || 0);
+      const val = Math.abs(d) + (min / 60) + (sec / 3600);
+      const sign = (hemi === 'S' || hemi === 'W' || (d < 0 && !hemi)) ? -1 : 1;
+      return sign * val;
+    }
 
-  ctx.clearRect(0, 0, CW, CH);
+    function parseCoordinateText(raw) {
+      const text = cleanCoordText(raw);
+      if (!text) return null;
 
-  // Background
-  const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, R);
-  grd.addColorStop(0, isDark ? '#1a1a18' : '#ffffff');
-  grd.addColorStop(1, isDark ? '#0a0a08' : '#f0f0ea');
-  ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2);
-  ctx.fillStyle = grd; ctx.fill();
-  ctx.strokeStyle = getCSSVar('--ink'); ctx.lineWidth = 2.5; ctx.stroke();
+      if (/^[A-Z]{1,2}\d{2,}[A-Z]*\d+$/i.test(text)) {
+        return parseMGRS(text);
+      }
 
-  const ink  = getCSSVar('--ink');
-  const ink3 = getCSSVar('--ink3');
-  const line = getCSSVar('--line');
-  const red  = getCSSVar('--red');
-  const grn  = getCSSVar('--grn');
+      const pair = text.split(/[;,]/);
+      if (pair.length === 2) {
+        const lat = parseCoordinateText(pair[0]);
+        const lon = parseCoordinateText(pair[1]);
+        if (lat && lon) return { lat: lat.lat ?? lat, lng: lon.lng ?? lon };
+      }
 
-  // — rotate the entire rose by NEGATIVE phone heading so
-  //   the direction the phone faces always sits at top —
-  const roseRot = phoneHdg !== null ? RAD(-phoneHdg) : 0;
+      const t = text.toUpperCase();
+      if (/[NSEW]/.test(t) || /°|['\"]/.test(text) || /\d\s+\d/.test(text)) {
+        const v = degFromDMSString(text);
+        if (v !== null) return v;
+      }
 
-  ctx.save();
-  ctx.translate(cx, cy);
-  ctx.rotate(roseRot);
+      const dd = parseDegreesOnly(text);
+      if (dd !== null) return dd;
 
-  // Tick marks every 5°
-  for (let i = 0; i < 72; i++) {
-    const a    = RAD(i * 5);
-    const maj  = i % 18 === 0;
-    const med  = i % 6 === 0;
-    const r1   = maj ? R - 28 : med ? R - 20 : R - 14;
-    const r2   = R - 10;
-    ctx.beginPath();
-    ctx.moveTo(r1 * Math.sin(a), -r1 * Math.cos(a));
-    ctx.lineTo(r2 * Math.sin(a), -r2 * Math.cos(a));
-    ctx.strokeStyle = maj ? ink : med ? ink3 : line;
-    ctx.lineWidth   = maj ? 2.2 : med ? 1.3 : 0.7;
-    ctx.stroke();
-  }
+      return null;
+    }
 
-  // Degree labels every 30°
-  for (let i = 0; i < 12; i++) {
-    const a = RAD(i * 30);
-    const rv = R - 42;
-    ctx.fillStyle  = ink3;
-    ctx.font       = 'bold 10px Times New Roman';
-    ctx.textAlign  = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(i * 30, rv * Math.sin(a), -rv * Math.cos(a));
-  }
+    function parseMGRS(input) {
+      const s = cleanCoordText(input).toUpperCase();
+      if (!/^[A-Z]{1,2}\d{2,}[A-Z]*\d+$/.test(s)) return null;
 
-  // Cardinal letters
-  const cardinals = [['N', 0, red], ['E', 90, ink], ['S', 180, ink], ['W', 270, ink]];
-  cardinals.forEach(([l, deg, col]) => {
-    const a = RAD(deg), rv = R - 60;
-    ctx.fillStyle  = col;
-    ctx.font       = 'bold 15px Times New Roman';
-    ctx.textAlign  = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(l, rv * Math.sin(a), -rv * Math.cos(a));
-  });
+      const m = s.match(/^([A-Z])([A-Z])?(\d{2,})([A-Z]{0,2})(\d+)$/);
+      if (!m) return null;
 
-  ctx.restore(); // end rose rotation
+      const zone = Number(m[3].slice(0, 2));
+      const easting = Number(m[3].slice(2));
+      const northing = Number(m[5]);
+      const col = m[4] || '';
+      const band = m[1];
+      const latBand = band.toUpperCase();
+      const c1 = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+      const latBands = 'CDEFGHJKLMNPQRSTUVWX';
+      const bandIdx = latBands.indexOf(latBand);
+      if (bandIdx < 0) return null;
 
-  // — Target bearing arrow (fixed in canvas space, always points UP = target direction) —
-  if (tBrg !== null) {
-    const delta = phoneHdg !== null ? ((tBrg - phoneHdg + 540) % 360) - 180 : tBrg;
-    const aligned = phoneHdg !== null && Math.abs(delta) <= 3;
-    const arrowAngle = phoneHdg !== null ? RAD(delta) : RAD(tBrg); // relative to top
+      const lat = -80 + bandIdx * 8 + 4;
+      const lon = (zone - 1) * 6 - 180 + 3;
+      const e = easting;
+      const n = northing;
+      const x = 100000 + e;
+      const y = 100000 + n;
 
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.rotate(arrowAngle);
+      if (col) {
+        const xOff = c1.indexOf(col[0]) + 1;
+        const yOff = (col.length > 1) ? c1.indexOf(col[1]) + 1 : 0;
+        const xCoord = x + xOff * 100000;
+        const yCoord = y + yOff * 100000;
+        return { lat: lat + ((yCoord % 1000000) / 1000000) * 10, lng: lon + ((xCoord % 1000000) / 1000000) * 6 };
+      }
 
-    const arrowColor = aligned ? grn : ink;
-    const arrowLen   = R - 22;
+      return { lat, lng: lon };
+    }
 
-    // Shaft
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(0, -arrowLen);
-    ctx.strokeStyle  = arrowColor;
-    ctx.lineWidth    = aligned ? 5 : 3.5;
-    ctx.lineCap      = 'round';
-    ctx.stroke();
+    function normalizeLatLngPair(value) {
+      const parsed = parseCoordinateText(value);
+      if (parsed === null) return null;
+      if (typeof parsed === 'number') return { lat: parsed, lng: null };
+      if (parsed && typeof parsed === 'object') return parsed;
+      return null;
+    }
 
-    // Arrowhead
-    ctx.beginPath();
-    ctx.moveTo(0, -arrowLen);
-    ctx.lineTo(-10, -arrowLen + 18);
-    ctx.lineTo( 10, -arrowLen + 18);
-    ctx.closePath();
-    ctx.fillStyle = arrowColor;
-    ctx.fill();
+    function isValidLat(lat) {
+      return Number.isFinite(lat) && lat >= -90 && lat <= 90;
+    }
 
-    // Back tail
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(0, R - 55);
-    ctx.strokeStyle = arrowColor + '55';
-    ctx.lineWidth   = 2;
-    ctx.stroke();
+    function isValidLng(lng) {
+      return Number.isFinite(lng) && lng >= -180 && lng <= 180;
+    }
 
-    // Target bearing label on arrow tip
-    ctx.fillStyle    = arrowColor;
-    ctx.font         = 'bold 11px Times New Roman';
-    ctx.textAlign    = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(tBrg.toFixed(1) + '°', 0, -arrowLen - 14);
+    function fmtCoord(lat, lng) {
+      return `Lat ${Number(lat).toFixed(5)}°, Lng ${Number(lng).toFixed(5)}°`;
+    }
 
-    ctx.restore();
-  }
+    function setStatus(el, msg, kind) {
+      el.textContent = msg;
+      el.classList.remove('ok', 'err');
+      if (kind) el.classList.add(kind);
+    }
 
-  // — Phone heading marker: orange triangle at top of rose (always at 12 o'clock) —
-  if (phoneHdg !== null) {
-    ctx.save();
-    ctx.translate(cx, cy);
-    // Triangle pointing down into the rose at top
-    const tipY = -(R - 8);
-    ctx.beginPath();
-    ctx.moveTo(0, tipY);
-    ctx.lineTo(-9, tipY - 16);
-    ctx.lineTo( 9, tipY - 16);
-    ctx.closePath();
-    ctx.fillStyle   = '#ff8800';
-    ctx.strokeStyle = '#ff8800';
-    ctx.fill();
-    ctx.restore();
-  }
+    function setMode(target, mode) {
+      const dd = document.getElementById(target + 'DD');
+      const dms = document.getElementById(target + 'DMS');
+      const mgrs = document.getElementById(target + 'MGRS');
+      const tabs = document.querySelectorAll('.tab[data-target="' + target + '"]');
 
-  // Center dot
-  ctx.beginPath(); ctx.arc(cx, cy, 6, 0, Math.PI * 2);
-  ctx.fillStyle = getCSSVar('--bg2'); ctx.fill();
-  ctx.strokeStyle = ink; ctx.lineWidth = 2; ctx.stroke();
-  ctx.beginPath(); ctx.arc(cx, cy, 2.5, 0, Math.PI * 2);
-  ctx.fillStyle = ink; ctx.fill();
+      dd.style.display = mode === 'dd' ? 'block' : 'none';
+      dms.style.display = mode === 'dms' ? 'block' : 'none';
+      mgrs.style.display = mode === 'mgrs' ? 'block' : 'none';
+      tabs.forEach(btn => btn.classList.toggle('active', btn.dataset.mode === mode));
+    }
 
-  // Phone heading readout at bottom of canvas
-  if (phoneHdg !== null) {
-    ctx.fillStyle    = ink;
-    ctx.font         = 'bold 15px Times New Roman';
-    ctx.textAlign    = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(Math.round(phoneHdg) + '° (' + dirLbl(phoneHdg) + ')', cx, cy + R * 0.62);
-  }
-}
+    document.querySelectorAll('.tab').forEach(btn => {
+      btn.addEventListener('click', () => setMode(btn.dataset.target, btn.dataset.mode));
+    });
 
-</script>
+    function parseGunCoord() {
+      const mode = document.querySelector('.tab.active[data-target="gun"]').dataset.mode;
+      if (mode === 'mgrs') {
+        const input = document.getElementById('gunMGRSInput').value;
+        const parsed = parseMGRS(input);
+        if (!parsed) return null;
+        return parsed;
+      }
+      if (mode === 'dms') {
+        const lat = parseCoordinateText(document.getElementById('gunLatText').value);
+        const lng = parseCoordinateText(document.getElementById('gunLngText').value);
+        if (lat === null || lng === null) return null;
+        return { lat: Number(lat), lng: Number(lng) };
+      }
+      const lat = parseCoordinateText(document.getElementById('gunLat').value);
+      const lng = parseCoordinateText(document.getElementById('gunLng').value);
+      if (lat === null || lng === null) return null;
+      return { lat: Number(lat), lng: Number(lng) };
+    }
+
+    function parseTargetCoord() {
+      const mode = document.querySelector('.tab.active[data-target="tgt"]').dataset.mode;
+      if (mode === 'mgrs') {
+        const input = document.getElementById('tgtMGRSInput').value;
+        const parsed = parseMGRS(input);
+        if (!parsed) return null;
+        return parsed;
+      }
+      if (mode === 'dms') {
+        const lat = parseCoordinateText(document.getElementById('tLatText').value);
+        const lng = parseCoordinateText(document.getElementById('tLngText').value);
+        if (lat === null || lng === null) return null;
+        return { lat: Number(lat), lng: Number(lng) };
+      }
+      const lat = parseCoordinateText(document.getElementById('tLat').value);
+      const lng = parseCoordinateText(document.getElementById('tLng').value);
+      if (lat === null || lng === null) return null;
+      return { lat: Number(lat), lng: Number(lng) };
+    }
+
+    function applyManGPS() {
+      const parsed = parseGunCoord();
+      if (!parsed || !isValidLat(parsed.lat) || !isValidLng(parsed.lng)) {
+        setStatus(document.getElementById('gunStatus'), 'invalid coordinate', 'err');
+        return;
+      }
+      const gun = { lat: parsed.lat, lng: parsed.lng, alt: Number(document.getElementById('gunAlt')?.value || 0) };
+      
+      document.getElementById('coordOut').innerHTML = `Gun: <span class="muted">${fmtCoord(gun.lat, gun.lng)}</span><br />Target: --`;
+      setStatus(document.getElementById('gunStatus'), 'gun coordinate accepted', 'ok');
+      window.GUN = gun;
+    }
+
+    function applyTarget() {
+      const parsed = parseTargetCoord();
+      if (!parsed || !isValidLat(parsed.lat) || !isValidLng(parsed.lng)) {
+        setStatus(document.getElementById('tgtStatus'), 'invalid coordinate', 'err');
+        return;
+      }
+      const target = { lat: parsed.lat, lng: parsed.lng, elev: Number(document.getElementById('tElev').value || 0) };
+      const gunText = window.GUN ? fmtCoord(window.GUN.lat, window.GUN.lng) : 'not set';
+      document.getElementById('coordOut').innerHTML = `Gun: <span class="muted">${gunText}</span><br />Target: <span class="muted">${fmtCoord(target.lat, target.lng)}</span>`;
+      setStatus(document.getElementById('tgtStatus'), 'target coordinate accepted', 'ok');
+      window.TGT = target;
+    }
+
+    function clearGun() {
+      document.getElementById('gunLat').value = '';
+      document.getElementById('gunLng').value = '';
+      document.getElementById('gunLatText').value = '';
+      document.getElementById('gunLngText').value = '';
+      document.getElementById('gunMGRSInput').value = '';
+      setStatus(document.getElementById('gunStatus'), 'cleared', 'ok');
+      delete window.GUN;
+    }
+
+    function clearTarget() {
+      document.getElementById('tLat').value = '';
+      document.getElementById('tLng').value = '';
+      document.getElementById('tLatText').value = '';
+      document.getElementById('tLngText').value = '';
+      document.getElementById('tgtMGRSInput').value = '';
+      setStatus(document.getElementById('tgtStatus'), 'cleared', 'ok');
+      delete window.TGT;
+    }
+
+    document.getElementById('gunAlt')?.value = '0';
+    document.getElementById('tElev')?.value = '0';
+  </script>
 </body>
 </html>
