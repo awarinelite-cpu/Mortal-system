@@ -158,7 +158,7 @@
       if (raw === null || raw === undefined) return null;
       const s = cleanCoordText(raw)
         .replace(/°/g, ' ')
-        .replace(/[\'’]/g, ' ')
+        .replace(/['’]/g, ' ')
         .replace(/"/g, ' ')
         .replace(/\s+/g, ' ')
         .trim();
@@ -170,22 +170,10 @@
       return null;
     }
 
-    // Fast decimal-pair parser: "lat, lon" or "lat lon". Returns {lat, lng} or null.
-    function parseLatLon(input) {
-      if (typeof input !== 'string') return null;
-      const match = input.trim().match(/^\s*([+-]?(?:\d+(?:\.\d*)?|\.\d+))\s*[,;\s]\s*([+-]?(?:\d+(?:\.\d*)?|\.\d+))\s*$/);
-      if (!match) return null;
-      const lat = Number(match[1]);
-      const lng = Number(match[2]);
-      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-      if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
-      return { lat, lng };
-    }
-
     function degFromDMSString(str) {
       const s = cleanCoordText(str)
         .replace(/°/g, ' ')
-        .replace(/[\'’]/g, ' ')
+        .replace(/['’]/g, ' ')
         .replace(/"/g, ' ')
         .replace(/\s+/g, ' ')
         .trim();
@@ -219,7 +207,6 @@
         return parseMGRS(text);
       }
 
-      // combined lat,lng in one string
       const pair = text.split(/[;,]/);
       if (pair.length === 2) {
         const lat = parseCoordinateText(pair[0]);
@@ -318,10 +305,6 @@
     });
 
     function parseGunCoord() {
-      // Fast parse if user pasted a decimal pair into a single field
-      const maybeGunPair = parseLatLon(document.getElementById('gunLat').value || document.getElementById('gunLatText').value || '');
-      if (maybeGunPair) return maybeGunPair;
-
       const mode = document.querySelector('.tab.active[data-target="gun"]').dataset.mode;
       if (mode === 'mgrs') {
         const input = document.getElementById('gunMGRSInput').value;
@@ -341,65 +324,24 @@
       return { lat: Number(lat), lng: Number(lng) };
     }
 
-    // Enhanced: try many inputs & formats for target coordinates so user can paste any supported coord type
     function parseTargetCoord() {
-      // 0) fast decimal pair parser on the primary fields (covers "6.5120, 3.4450" pasted into Lat)
-      const maybePairFromLat = parseLatLon(document.getElementById('tLat').value || '');
-      if (maybePairFromLat) return maybePairFromLat;
-      const maybePairFromLng = parseLatLon(document.getElementById('tLng').value || '');
-      if (maybePairFromLng) return maybePairFromLng;
-
-      // 1) explicit MGRS input
-      const mgrsInput = cleanCoordText(document.getElementById('tgtMGRSInput').value);
-      if (mgrsInput) {
-        const p = parseMGRS(mgrsInput);
-        if (p && typeof p === 'object' && p.lat !== undefined && p.lng !== undefined) return p;
+      const mode = document.querySelector('.tab.active[data-target="tgt"]').dataset.mode;
+      if (mode === 'mgrs') {
+        const input = document.getElementById('tgtMGRSInput').value;
+        const parsed = parseMGRS(input);
+        if (!parsed) return null;
+        return parsed;
       }
-
-      // 2) check if user pasted a combined lat,lng into tLat (or tLng) in non-comma form
-      const tLatVal = cleanCoordText(document.getElementById('tLat').value);
-      if (tLatVal) {
-        const p = parseCoordinateText(tLatVal);
-        if (p && typeof p === 'object' && p.lat !== undefined && p.lng !== undefined) return p;
+      if (mode === 'dms') {
+        const lat = parseCoordinateText(document.getElementById('tLatText').value);
+        const lng = parseCoordinateText(document.getElementById('tLngText').value);
+        if (lat === null || lng === null) return null;
+        return { lat: Number(lat), lng: Number(lng) };
       }
-      const tLngVal = cleanCoordText(document.getElementById('tLng').value);
-      if (tLngVal) {
-        const p = parseCoordinateText(tLngVal);
-        if (p && typeof p === 'object' && p.lat !== undefined && p.lng !== undefined) return p;
-      }
-
-      // 3) try parsing separate lat/lng fields (any supported format per field)
-      const pLat = tLatVal ? parseCoordinateText(tLatVal) : null;
-      const pLng = tLngVal ? parseCoordinateText(tLngVal) : null;
-      if (pLat !== null && pLng !== null) {
-        // Both parsed as numbers
-        if (typeof pLat === 'number' && typeof pLng === 'number') return { lat: Number(pLat), lng: Number(pLng) };
-        // One of them might already be a full object
-        if (typeof pLat === 'object' && pLat.lat !== undefined && pLat.lng !== undefined) return pLat;
-        if (typeof pLng === 'object' && pLng.lat !== undefined && pLng.lng !== undefined) return pLng;
-      }
-
-      // 4) check DMS text fields
-      const tLatText = cleanCoordText(document.getElementById('tLatText').value);
-      const tLngText = cleanCoordText(document.getElementById('tLngText').value);
-      if (tLatText || tLngText) {
-        const a = tLatText ? parseCoordinateText(tLatText) : (pLat !== null ? pLat : null);
-        const b = tLngText ? parseCoordinateText(tLngText) : (pLng !== null ? pLng : null);
-        if (a !== null && b !== null) {
-          if (typeof a === 'object' && a.lat !== undefined && a.lng !== undefined) return a;
-          if (typeof b === 'object' && b.lat !== undefined && b.lng !== undefined) return b;
-          if (typeof a === 'number' && typeof b === 'number') return { lat: Number(a), lng: Number(b) };
-        }
-      }
-
-      // 5) try everything concatenated (covers "lat lon" or "MGRS ..." pasted into any field)
-      const all = [tLatVal, tLngVal, tLatText, tLngText, mgrsInput].filter(Boolean).join(' ');
-      if (all) {
-        const p = parseCoordinateText(all);
-        if (p && typeof p === 'object' && p.lat !== undefined && p.lng !== undefined) return p;
-      }
-
-      return null;
+      const lat = parseCoordinateText(document.getElementById('tLat').value);
+      const lng = parseCoordinateText(document.getElementById('tLng').value);
+      if (lat === null || lng === null) return null;
+      return { lat: Number(lat), lng: Number(lng) };
     }
 
     function applyManGPS() {
