@@ -644,6 +644,21 @@ canvas{display:block;}
       AWAITING SENSOR&hellip;
     </div>
 
+    <!-- COMPASS CALIBRATION -->
+    <div style="border:1px solid var(--line);background:var(--cbg);padding:10px 12px;margin-bottom:12px;">
+      <div style="font-size:8px;letter-spacing:3px;color:var(--ink3);margin-bottom:8px;">CALIBRATION &mdash; LAY PHONE FLAT, TOP EDGE POINTING ALONG THE BARREL</div>
+      <div class="g3">
+        <div class="field"><label class="flbl">EXTERNAL COMPASS (&deg;)</label><input type="number" id="lcRefInput" step="0.5" min="0" max="360" placeholder="e.g. 215"/></div>
+        <div class="field"><label class="flbl">DECLINATION (&deg; E+ / W&minus;)</label><input type="number" id="lcDeclInput" step="0.1" placeholder="0" oninput="lcDeclChange()"/></div>
+        <div style="display:flex;align-items:flex-end;gap:7px;margin-bottom:10px;">
+          <button class="btn" style="flex:1;padding:9px;" onclick="lcCalibrate()">MATCH</button>
+          <button class="btn" style="padding:9px;" onclick="lcResetCal()">RESET</button>
+        </div>
+      </div>
+      <div id="lcCalStatus" style="font-size:8px;letter-spacing:2px;color:var(--dim);">TRIM: 0.0&deg; &nbsp;|&nbsp; DECLINATION: 0.0&deg;</div>
+      <div style="font-size:8px;letter-spacing:1px;color:var(--dim);margin-top:6px;line-height:1.6;">Keep away from metal, magnets and electronics. If the heading drifts, move the phone in a figure-8 to recalibrate the sensor. MATCH sets a correction so the phone agrees with your external compass; enter declination if the target bearing is TRUE north and the external compass is magnetic.</div>
+    </div>
+
     <!-- LIVE ROTATING COMPASS CANVAS -->
     <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
       <canvas id="liveCompCanvas" width="300" height="300" style="border:2px solid var(--line);max-width:100%;"></canvas>
@@ -2151,7 +2166,7 @@ window.addEventListener('resize',()=>{if(RES)render();});
 ═══════════════════════════════════════ */
 const LC = {
   active:false, filt:null, shown:null, locked:false,
-  alignSince:0, gotAbs:false, startT:0, rafId:null
+  alignSince:0, gotAbs:false, startT:0, rafId:null, trim:0, decl:0
 };
 const LC_LOCK_IN = 2, LC_LOCK_OUT = 4, LC_HOLD_MS = 400;
 
@@ -2174,6 +2189,7 @@ function _lcActivate() {
   LC.active = true; LC.filt = null; LC.shown = null;
   LC.locked = false; LC.alignSince = 0; LC.gotAbs = false;
   LC.startT = performance.now();
+  lcLoadCal();
   document.getElementById('liveCompStartBtn').style.display = 'none';
   document.getElementById('liveCompStopBtn').style.display = '';
   document.getElementById('liveCompBody').style.display = 'block';
@@ -2196,13 +2212,46 @@ function stopLiveCompass() {
 
 /* Tilt-compensated compass heading from alpha/beta/gamma (W3C method) */
 function _lcTiltHeading(alpha, beta, gamma) {
+  // Earth frame: E, N, Up. Phone lying flat -> use the TOP EDGE direction.
+  // Phone held upright (camera style) -> use the BACK direction.
+  // Whichever has the larger horizontal component is well-defined; the other degenerates.
   const x = RAD(beta), y = RAD(gamma), z = RAD(alpha);
-  const cY = Math.cos(y), sY = Math.sin(y), sX = Math.sin(x);
-  const cZ = Math.cos(z), sZ = Math.sin(z), cX = Math.cos(x);
-  const Vx = -cZ * sY - sZ * sX * cY;
-  const Vy = -sZ * sY + cZ * sX * cY;
-  return (DEG(Math.atan2(Vx, Vy)) + 360) % 360;
+  const cX = Math.cos(x), sX = Math.sin(x), cY = Math.cos(y), sY = Math.sin(y);
+  const cZ = Math.cos(z), sZ = Math.sin(z);
+  const tE = -sZ * cX,                 tN = cZ * cX;                    // top edge
+  const bE = -(cZ * sY + sZ * sX * cY), bN = cZ * sX * cY - sZ * sY;   // back (-Z axis)
+  // Back direction is only meaningful when the top edge tilts UP (beta > 0); otherwise stay on the top edge.
+  const useTop = Math.hypot(tE, tN) >= Math.hypot(bE, bN) || (sX < 0 && cX > 0);
+  const E = useTop ? tE : bE, N = useTop ? tN : bN;
+  return (DEG(Math.atan2(E, N)) + 360) % 360;
 }
+
+
+/* ── Compass calibration (trim + declination), persisted ── */
+const LC_CAL_KEY='mfcs-lc-cal';
+function lcUpdateCalStatus(){
+  const el=document.getElementById('lcCalStatus');
+  if(el) el.innerHTML='TRIM: '+(LC.trim>=0?'+':'')+LC.trim.toFixed(1)+'&deg; &nbsp;|&nbsp; DECLINATION: '+(LC.decl>=0?'+':'')+LC.decl.toFixed(1)+'&deg;';
+}
+function lcLoadCal(){
+  try{const d=JSON.parse(localStorage.getItem(LC_CAL_KEY)||'null');if(d){LC.trim=+d.trim||0;LC.decl=+d.decl||0;}}catch(e){}
+  const di=document.getElementById('lcDeclInput'); if(di) di.value=LC.decl?LC.decl:'';
+  lcUpdateCalStatus();
+}
+function lcSaveCal(){ try{localStorage.setItem(LC_CAL_KEY,JSON.stringify({trim:LC.trim,decl:LC.decl}));}catch(e){} lcUpdateCalStatus(); }
+function lcDeclChange(){
+  const v=parseFloat(document.getElementById('lcDeclInput').value);
+  LC.decl=isNaN(v)?0:Math.max(-30,Math.min(30,v)); lcSaveCal();
+}
+function lcCalibrate(){
+  const ref=parseFloat(document.getElementById('lcRefInput').value);
+  if(isNaN(ref)||ref<0||ref>360){showToast('ENTER EXTERNAL COMPASS READING');return;}
+  if(LC.filt===null){showToast('NO SENSOR READING YET');return;}
+  // match the (magnetic) external compass; declination is added on top afterwards
+  LC.trim=((ref-LC.filt+540)%360)-180;
+  lcSaveCal(); showToast('COMPASS MATCHED: '+(LC.trim>=0?'+':'')+LC.trim.toFixed(1)+'°');
+}
+function lcResetCal(){ LC.trim=0; LC.decl=0; const di=document.getElementById('lcDeclInput'); if(di)di.value=''; lcSaveCal(); showToast('CALIBRATION RESET'); }
 
 function _lcOnAbs(e) {
   if (!LC.gotAbs) { LC.gotAbs = true; LC.filt = null; } // drop anything from the relative stream
@@ -2259,7 +2308,7 @@ function _lcDraw() {
   LC.rafId = requestAnimationFrame(_lcDraw);
 
   const tBrg  = RES ? RES.adjBrg : null;
-  const phone = LC.filt;
+  const phone = LC.filt === null ? null : (LC.filt + LC.trim + LC.decl + 720) % 360;
 
   const hdgEl = document.getElementById('lcPhoneHdg'), hdgDir = document.getElementById('lcPhoneDir');
   const tBrgEl = document.getElementById('lcTargetBrg'), tDirEl = document.getElementById('lcTargetDir');
