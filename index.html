@@ -833,8 +833,10 @@ const dirLbl=b=>DIRS[Math.round(b/22.5)%16];
 const fmtDist=m=>m>=1000?`${(m/1000).toFixed(2)} km`:`${m.toFixed(0)} m`;
 const degToMil=d=>Math.round(d*(6400/(2*Math.PI))*RAD(1));
 function fmtDMS(deg,isLat){
-  const a=Math.abs(deg),d=Math.floor(a),m=Math.floor((a-d)*60),s=((a-d)*3600-m*60).toFixed(1);
-  return`${d}\u00b0${m}'${s}" ${isLat?(deg>=0?'N':'S'):(deg>=0?'E':'W')}`;
+  let t=Math.round(Math.abs(deg)*36000); // tenths of an arc-second, so 59.96" carries over correctly
+  const d=Math.floor(t/36000); t-=d*36000;
+  const m=Math.floor(t/600); const sec=((t-m*600)/10).toFixed(1);
+  return`${d}\u00b0${m}'${sec}" ${isLat?(deg>=0?'N':'S'):(deg>=0?'E':'W')}`;
 }
 function getCSSVar(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
 
@@ -889,7 +891,9 @@ function solveBal(rangeM, elevDelta, v0, tempC, gunAltM, ws, wd, brgDeg, latDeg)
     let vz=0;                 // lateral
     let t=0;
     let maxY=0;
+    let crossed=false;
     for(let i=0;i<16000;i++){
+      const px=x,py=y,pz=z,pt=t;
       const curAlt=gunAltM+y;
       const rho=airDensityAtAlt(Math.max(0,curAlt));
       const Cd=wp.Cd;
@@ -902,56 +906,64 @@ function solveBal(rangeM, elevDelta, v0, tempC, gunAltM, ws, wd, brgDeg, latDeg)
       let ay=-g-drag*vy;
       let az=-drag*vz;
 
-      // Wind effect — apply as acceleration proportional to relative wind
-      // Cross and head wind push projectile
+      // Wind effect — acceleration proportional to relative wind
       ax+=B*spd*(wHead);
       az+=B*spd*(wCross);
 
-      // Coriolis (in northern hemisphere, deflects east = +z direction for northward shot)
-      // Simplified: lateral Coriolis = 2 * Omega_z * vx * t factor
+      // Coriolis: horizontal deflection to the RIGHT of travel in the northern
+      // hemisphere (left in the southern) = 2 * Omega * sin(lat) * v_forward
       az+=2*Omega_z*vx;
 
       vx+=ax*dt; vy+=ay*dt; vz+=az*dt;
       x+=vx*dt; y+=vy*dt; z+=vz*dt;
       t+=dt;
       if(y>maxY) maxY=y;
-      if(y<elevDelta-0.5&&x>rangeM*0.05) break;
+      // Impact = descending through target height; interpolate inside the step
+      if(vy<0 && y<elevDelta){
+        const f=(py-elevDelta)/(py-y);
+        x=px+f*(x-px); z=pz+f*(z-pz); t=pt+f*dt; y=elevDelta;
+        crossed=true;
+        break;
+      }
+      if(y<Math.min(0,elevDelta)-2000) break;
     }
+    if(!crossed) x=-1; // never came down to target height
     return{x,y,z,t,maxY};
   }
 
-  // Search LOW angle: 45° to 65°
-  let bestLow=null,minErrLow=1e9;
-  for(let ang=45;ang<=65.1;ang+=0.1){
-    const r=simulate(ang);
-    const err=Math.abs(r.x-rangeM);
-    if(err<minErrLow){minErrLow=err;bestLow={ang,r};}
-    if(r.x>rangeM*1.4) break;
+  // A mortar fires between minEl and maxEl. On one charge, range falls steadily
+  // as elevation rises from 45 deg to 85 deg, so there is exactly ONE valid
+  // angle for a given charge and range. Find it by bisection.
+  const lo0=wp.minEl||45, hi0=wp.maxEl||85;
+  let reach='ok', ang, r;
+  const rLo=simulate(lo0);
+  if(rLo.x<rangeM){                                          // charge can't reach even at min elevation
+    ang=lo0; r=rLo;
+    // allow a small tolerance at the very top of a charge band (model vs published table)
+    if(rangeM-rLo.x>Math.max(15,0.01*rangeM)) reach='short';
   }
-
-  // Search HIGH angle: 65° to 85°
-  let bestHigh=null,minErrHigh=1e9;
-  for(let ang=85;ang>=65;ang-=0.1){
-    const r=simulate(ang);
-    const err=Math.abs(r.x-rangeM);
-    if(err<minErrHigh){minErrHigh=err;bestHigh={ang,r};}
+  else {
+    const rHi=simulate(hi0);
+    if(rHi.x>rangeM){ reach='steep'; ang=hi0; r=rHi; }      // target inside min range of this charge
+    else {
+      let lo=lo0, hi=hi0;
+      for(let i=0;i<26;i++){
+        const mid=(lo+hi)/2;
+        if(simulate(mid).x>rangeM) lo=mid; else hi=mid;
+      }
+      ang=(lo+hi)/2; r=simulate(ang);
+    }
   }
-
-  const low=bestLow||{ang:60,r:{x:rangeM,y:0,z:0,t:rangeM/v0adj,maxY:100}};
-  const high=bestHigh||low;
-
-  function makeSol(s){
-    return{
-      elev:s.ang,
-      tof:s.r.t,
-      maxOrd:s.r.maxY,
-      lateralDrift:s.r.z,  // metres, + = right of bearing
-      tempFactor,
-      v0adj
-    };
-  }
-
-  return{low:makeSol(low),high:makeSol(high)};
+  return{
+    elev:ang,
+    tof:r.t,
+    maxOrd:r.maxY,
+    lateralDrift:r.z,  // metres, + = right of bearing
+    tempFactor,
+    v0adj,
+    reach,             // 'ok' | 'short' | 'steep'
+    err:r.x-rangeM
+  };
 }
 
 function simTraj(angDeg, v0adj, elevDelta, gunAltM){
@@ -976,9 +988,9 @@ function simTraj(angDeg, v0adj, elevDelta, gunAltM){
 /* ═══════════════ CORIOLIS CALC ═══════════════ */
 function coriolisDeflection(rangeM, tof, latDeg){
   const OMEGA=7.2921e-5;
-  // Eastward drift = OMEGA * range * tof * sin(lat) / 2
-  const drift=OMEGA*rangeM*(tof/2)*Math.sin(RAD(latDeg));
-  return drift; // metres eastward (+ = east deflection)
+  // Lateral deflection = OMEGA * sin(lat) * range * time of flight
+  // + = to the RIGHT of the line of fire (northern hemisphere), - = left
+  return OMEGA*rangeM*tof*Math.sin(RAD(latDeg));
 }
 
 /* ═══════════════ DANGER CLOSE ═══════════════ */
@@ -1542,7 +1554,8 @@ function compute(silent){
   const elevDiff=parseFloat(document.getElementById('tElev').value)||0;
   const ws=parseFloat(document.getElementById('wSpd').value)||0;
   const wd=parseFloat(document.getElementById('wDir').value)||0;
-  const temp=parseFloat(document.getElementById('temp').value)||15;
+  const tempRaw=parseFloat(document.getElementById('temp').value);
+  const temp=isNaN(tempRaw)?15:tempRaw; // 0 C is a valid temperature
   const alt=parseFloat(document.getElementById('altM').value)||0;
 
   const dist=haversine(GUN.lat,GUN.lng,tLat,tLng);
@@ -1556,8 +1569,22 @@ function compute(silent){
   hlCharge(chName);SELCHG=chName;
 
   // ENHANCED BALLISTICS — all corrections applied inside solveBal
-  const sols=solveBal(dist,elevDiff,chData.v0,temp,alt,ws,wd,trueBrg,GUN.lat);
-  const activeSol=ANGLE_MODE==='high'?sols.high:sols.low;
+  // LOW (normal) = the band charge. HIGH (steep) = the next charge up fired at a
+  // steeper angle (only if that charge can still land this close, i.e. <= 85 deg).
+  const lowSol=solveBal(dist,elevDiff,chData.v0,temp,alt,ws,wd,trueBrg,GUN.lat);
+  const chKeys=Object.keys(charges);
+  const hiKey=chKeys[chKeys.indexOf(chName)+1]||null;
+  let highSol=null;
+  if(hiKey){
+    const hs=solveBal(dist,elevDiff,charges[hiKey].v0,temp,alt,ws,wd,trueBrg,GUN.lat);
+    if(hs.reach==='ok') highSol=hs;
+  }
+  const sols={low:lowSol,high:highSol};
+  const useHigh=ANGLE_MODE==='high'&&!!highSol;
+  const activeSol=useHigh?highSol:lowSol;
+  const loadName=useHigh?hiKey:chName;
+  const loadData=charges[loadName];
+  const noSol=activeSol.reach!=='ok';
 
   const elevDeg=activeSol.elev;
   const tof=activeSol.tof;
@@ -1589,14 +1616,14 @@ function compute(silent){
   RES={
     dist,trueBrg,adjBrg,dir:dirLbl(trueBrg),adjDir:dirLbl(adjBrg),
     tLat,tLng,gLat:GUN.lat,gLng:GUN.lng,
-    elevDiff,chName,chV0:chData.v0,chLbl:chData.lbl,
-    chMin:chData.min,chMax:chData.max,
+    elevDiff,chName:loadName,chV0:loadData.v0,chLbl:loadData.lbl,
+    chMin:loadData.min,chMax:loadData.max,noSol,solReach:activeSol.reach,highUnavailable:(ANGLE_MODE==='high'&&!highSol),
     elevDeg,elevMil,tof,maxOrd,v0adj,
-    outOfRange:tooClose||tooFar,tooClose,tooFar,
+    outOfRange:tooClose||tooFar||noSol,tooClose,tooFar,
     ws,wd,lateralDrift,deflRad,temp,alt,
     coriolisM,tempCorr,
     weapon:ACTIVE_WPN,weaponLabel:W().label,
-    muzzleBrg,relTraverse,angleMode:ANGLE_MODE,
+    muzzleBrg,relTraverse,angleMode:useHigh?'high':'low',
     solLow:sols.low,solHigh:sols.high,
     dangerClose:dc,
     time:new Date().toLocaleTimeString(),
@@ -1608,9 +1635,16 @@ function compute(silent){
   const dualRow=document.getElementById('dualSolRow');
   dualRow.style.display='block';
   document.getElementById('solCardLowAngle').textContent=sols.low.elev.toFixed(1)+'°';
-  document.getElementById('solCardLowSub').textContent=degToMil(sols.low.elev)+' MIL · '+sols.low.tof.toFixed(1)+'s TOF';
-  document.getElementById('solCardHighAngle').textContent=sols.high.elev.toFixed(1)+'°';
-  document.getElementById('solCardHighSub').textContent=degToMil(sols.high.elev)+' MIL · '+sols.high.tof.toFixed(1)+'s TOF';
+  document.getElementById('solCardLowSub').textContent=sols.low.reach==='ok'
+    ?degToMil(sols.low.elev)+' MIL · '+sols.low.tof.toFixed(1)+'s TOF · '+chName
+    :(sols.low.reach==='short'?'NO SOLUTION — CHARGE TOO WEAK':'NO SOLUTION — TOO CLOSE FOR CHARGE');
+  if(highSol){
+    document.getElementById('solCardHighAngle').textContent=highSol.elev.toFixed(1)+'°';
+    document.getElementById('solCardHighSub').textContent=degToMil(highSol.elev)+' MIL · '+highSol.tof.toFixed(1)+'s TOF · '+hiKey;
+  } else {
+    document.getElementById('solCardHighAngle').textContent='N/A';
+    document.getElementById('solCardHighSub').textContent=hiKey?'NO STEEP SOLUTION AT THIS RANGE':'HIGHEST CHARGE';
+  }
 
   setRI('ri-sol',RES.outOfRange?'warn':'ok');
   render();
@@ -1642,6 +1676,12 @@ function render(){
   } else if(R.tooFar){
     rw.style.display='block';rw.className='warn-err';
     rw.innerHTML=`&#10006; OUT OF RANGE &mdash; ${fmtDist(R.dist)} exceeds ${W().cal} max ${vals[vals.length-1].max}m.`;
+  } else if(R.noSol){
+    rw.style.display='block';rw.className='warn-err';
+    rw.innerHTML=`&#9888; NO FIRING SOLUTION &mdash; ${R.chName} cannot hit ${fmtDist(R.dist)} between ${W().minEl}&deg; and ${W().maxEl}&deg;. Elevation shown is an estimate; select another charge.`;
+  } else if(R.highUnavailable){
+    rw.style.display='block';rw.className='warn-ok';
+    rw.innerHTML=`&#10003; IN RANGE &mdash; ${fmtDist(R.dist)} &nbsp;|&nbsp; <strong>${R.chName}</strong> &nbsp;|&nbsp; HIGH ANGLE not available here, showing normal solution`;
   } else {
     rw.style.display='block';rw.className='warn-ok';
     rw.innerHTML=`&#10003; IN RANGE &mdash; ${fmtDist(R.dist)} &nbsp;|&nbsp; <strong>${R.chName}</strong> (${R.chMin}–${R.chMax}m) &nbsp;|&nbsp; ${R.chLbl}`;
@@ -1679,8 +1719,7 @@ function render(){
   document.getElementById('subRange').style.color=R.outOfRange?'var(--red)':'var(--ink)';
   document.getElementById('subTOF').textContent=R.tof.toFixed(1)+'s';
   document.getElementById('subOrd').textContent=R.maxOrd.toFixed(0)+'m';
-  const corSign=R.coriolisM>=0?'+':'';
-  document.getElementById('subCoriolis').textContent=corSign+R.coriolisM.toFixed(1)+'m E';
+  document.getElementById('subCoriolis').textContent=Math.abs(R.coriolisM).toFixed(1)+'m '+(R.coriolisM>=0?'R':'L');
 
   // Crew steps
   const chBand=charges[R.chName];
@@ -1695,7 +1734,7 @@ function render(){
     {a:false,t:`TEMP CORRECTION: ${R.tempCorr}% v0 adjustment (${R.temp}°C). Adj muzzle vel: <strong>${R.v0adj.toFixed(1)} m/s</strong>`},
     {a:true,t:`LOAD <strong>${R.chName}</strong> — ${R.chLbl} | v0=${chBand.v0}m/s (adj: ${R.v0adj.toFixed(1)}) | ${chBand.min}–${chBand.max}m`},
     {a:false,t:`DROP round muzzle-down. Splash in <strong>${R.tof.toFixed(1)}s</strong>. Max height: <strong>${R.maxOrd.toFixed(0)}m</strong>`},
-    {a:false,t:`CORIOLIS: expect ~<strong>${Math.abs(R.coriolisM).toFixed(1)}m</strong> ${R.coriolisM>=0?'east':'west'} drift at ${GUN.lat.toFixed(1)}°N`},
+    {a:false,t:`CORIOLIS: expect ~<strong>${Math.abs(R.coriolisM).toFixed(1)}m</strong> drift to the ${R.coriolisM>=0?'right':'left'} of the line of fire at ${Math.abs(GUN.lat).toFixed(1)}°${GUN.lat>=0?'N':'S'}`},
     ...(R.ws>0?[{a:false,t:`WIND: ${R.lateralDrift.toFixed(1)}m lateral drift from integrated wind+Coriolis correction`}]:[]),
   ];
   document.getElementById('crewSteps').innerHTML=steps.map((s,i)=>`
@@ -1749,7 +1788,7 @@ function render(){
   // Coriolis panel
   document.getElementById('coriolisPanel').style.display='block';
   document.getElementById('coriolisGrid').innerHTML=
-    dbox('CORIOLIS DRIFT',R.coriolisM.toFixed(1),'m')+
+    dbox('CORIOLIS DRIFT',Math.abs(R.coriolisM).toFixed(1),'m '+(R.coriolisM>=0?'RIGHT':'LEFT'))+
     dbox('LATITUDE',GUN.lat.toFixed(3),'°'+(GUN.lat>=0?'N':'S'))+
     dbox('TEMP CORRECTION',R.tempCorr,'% v0')+
     dbox('ADJ V0',R.v0adj.toFixed(1),'m/s')+
@@ -2012,7 +2051,7 @@ RANGE:         ${fmtDist(R.dist)}
 TIME OF FLIGHT:${R.tof.toFixed(1)}s
 MAX ORDINATE:  ${R.maxOrd.toFixed(0)}m
 ADJ MUZZLE VEL:${R.v0adj.toFixed(1)} m/s (temp corr: ${R.tempCorr}%)
-CORIOLIS:      ${R.coriolisM.toFixed(1)}m eastward
+CORIOLIS:      ${Math.abs(R.coriolisM).toFixed(1)}m ${R.coriolisM>=0?'right':'left'} of line of fire
 LATERAL DRIFT: ${R.lateralDrift.toFixed(1)}m (wind+Coriolis)
 
 --- CONDITIONS ---
