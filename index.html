@@ -242,6 +242,14 @@ canvas{display:block;}
 :root.dark canvas{filter:brightness(.85) contrast(1.1);}
 
 /* DARK TOGGLE */
+/* TARGET MAP OVERLAY */
+.tmap-ov{position:fixed;inset:0;z-index:10000;background:var(--bg);display:none;flex-direction:column;}
+.tmap-ov.open{display:flex;}
+.tmap-bar{display:flex;gap:6px;align-items:center;padding:8px 10px;border-bottom:2px solid var(--ink);background:var(--bg2);flex-wrap:wrap;}
+.tmap-bar .tmap-title{flex:1;font-size:9px;letter-spacing:2px;color:var(--ink);min-width:120px;}
+.tmap-bar .tmap-title small{display:block;font-size:8px;letter-spacing:1px;color:var(--dim);font-weight:normal;}
+.tmap-frame{flex:1;width:100%;border:0;background:var(--bg3);}
+.tmap-msg{padding:6px 10px;font-size:8px;letter-spacing:1px;color:var(--dim);background:var(--bg2);border-top:1px solid var(--line);}
 .dm-toggle{position:fixed;bottom:16px;right:16px;z-index:9999;background:var(--ink);color:var(--bg);border:2px solid var(--ink3);font-family:var(--font);font-weight:900;font-size:10px;letter-spacing:2px;padding:9px 13px;cursor:pointer;transition:var(--tr);box-shadow:0 2px 12px var(--shadow);}
 .dm-toggle:hover{background:var(--ink3);}
 
@@ -437,6 +445,7 @@ canvas{display:block;}
       <input type="number" id="tElev" step="any" placeholder="0" oninput="autoCalc()"/></div>
     <div class="field"><label class="flbl">FRIENDLY FORCE DISTANCE (m) <span style="color:var(--red);font-size:7px;">DANGER CLOSE CHECK</span></label>
       <input type="number" id="friendlyDist" step="1" placeholder="0 = disable" oninput="autoCalc()"/></div>
+    <button class="btn" id="viewMapBtn" onclick="openTargetMap()" style="width:100%;padding:11px;margin-top:4px;">&#128205; VIEW ENEMY ON MAP</button>
   </div>
 </div>
 
@@ -711,6 +720,18 @@ canvas{display:block;}
 </div>
 
 </div><!-- /wrap -->
+
+<!-- TARGET MAP OVERLAY -->
+<div class="tmap-ov" id="tmapOv">
+  <div class="tmap-bar">
+    <div class="tmap-title">ENEMY LOCATION<small id="tmapCoords"></small></div>
+    <button class="btn btn-sm" id="tmapModeBtn" onclick="toggleTargetMapMode()">SATELLITE</button>
+    <button class="btn btn-sm" onclick="openTargetMapExternal()">OPEN IN MAPS APP</button>
+    <button class="btn btn-sm" onclick="closeTargetMap()">&#10005; CLOSE</button>
+  </div>
+  <iframe class="tmap-frame" id="tmapFrame" title="Enemy location map" loading="lazy" referrerpolicy="no-referrer" allowfullscreen></iframe>
+  <div class="tmap-msg" id="tmapMsg">Map needs an internet connection. Red pin = enemy position.</div>
+</div>
 
 <script>
 'use strict';
@@ -2487,6 +2508,51 @@ function _lcDrawCanvas(phoneHdg, tBrg, locked) {
     ctx.fillText(Math.round(phoneHdg) + '° (' + dirLbl(phoneHdg) + ')', cx, cy + R * 0.55);
   }
 }           
+
+/* ===== ENEMY LOCATION ON GOOGLE MAPS (in-app) ===== */
+let TMAP_SAT=false, TMAP_LL=null;
+function getTargetLatLng(){
+  let lat=parseFloat(document.getElementById('tLat').value);
+  let lng=parseFloat(document.getElementById('tLng').value);
+  if(isNaN(lat)||isNaN(lng)){
+    /* fall back to whatever is typed in the any-format box */
+    const raw=(document.getElementById('tAny')||{}).value;
+    if(raw){try{const r=parseCoord(raw);if(r&&!isNaN(r.lat)&&!isNaN(r.lng)){lat=r.lat;lng=r.lng;}}catch(e){}}
+  }
+  if(isNaN(lat)||isNaN(lng)||Math.abs(lat)>90||Math.abs(lng)>180)return null;
+  return{lat,lng};
+}
+function tmapSrc(){
+  const q=TMAP_LL.lat.toFixed(6)+','+TMAP_LL.lng.toFixed(6);
+  return 'https://maps.google.com/maps?q='+q+'&z=17&t='+(TMAP_SAT?'k':'m')+'&output=embed';
+}
+function openTargetMap(){
+  const ll=getTargetLatLng();
+  if(!ll){showErr('ENTER VALID TARGET COORDINATES FIRST');return;}
+  TMAP_LL=ll;
+  document.getElementById('tmapCoords').textContent=ll.lat.toFixed(6)+', '+ll.lng.toFixed(6);
+  document.getElementById('tmapModeBtn').textContent=TMAP_SAT?'MAP':'SATELLITE';
+  document.getElementById('tmapMsg').textContent=navigator.onLine===false
+    ?'OFFLINE — connect to the internet to load the map.'
+    :'Red pin = enemy position.';
+  document.getElementById('tmapFrame').src=tmapSrc();
+  document.getElementById('tmapOv').classList.add('open');
+}
+function toggleTargetMapMode(){
+  if(!TMAP_LL)return;
+  TMAP_SAT=!TMAP_SAT;
+  document.getElementById('tmapModeBtn').textContent=TMAP_SAT?'MAP':'SATELLITE';
+  document.getElementById('tmapFrame').src=tmapSrc();
+}
+function openTargetMapExternal(){
+  if(!TMAP_LL)return;
+  window.open('https://www.google.com/maps/search/?api=1&query='+TMAP_LL.lat.toFixed(6)+','+TMAP_LL.lng.toFixed(6),'_blank');
+}
+function closeTargetMap(){
+  document.getElementById('tmapOv').classList.remove('open');
+  document.getElementById('tmapFrame').src='about:blank';
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeTargetMap();});
 </script>
 </body>
 </html>
