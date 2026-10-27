@@ -2415,6 +2415,27 @@ const LC = {
 };
 const LC_LOCK_IN = 2, LC_LOCK_OUT = 4, LC_HOLD_MS = 400;
 
+/* Lock feedback: strong vibration pattern; if the device can't vibrate (e.g. iPhone), play a short beep */
+let _lcAudio = null;
+function _lcVibrate(pattern) {
+  try { return !!(navigator.vibrate && navigator.vibrate(pattern)); } catch (e) { return false; }
+}
+function _lcBeep() {
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    _lcAudio = _lcAudio || new AC();
+    if (_lcAudio.state === 'suspended') _lcAudio.resume();
+    const o = _lcAudio.createOscillator(), g = _lcAudio.createGain();
+    o.frequency.value = 1040; g.gain.value = 0.18;
+    o.connect(g); g.connect(_lcAudio.destination);
+    o.start(); o.stop(_lcAudio.currentTime + 0.14);
+  } catch (e) {}
+}
+function _lcLockFeedback() {
+  if (!_lcVibrate([200, 90, 200, 90, 350])) _lcBeep();
+}
+
 function startLiveCompass() {
   if (typeof DeviceOrientationEvent !== 'undefined' &&
       typeof DeviceOrientationEvent.requestPermission === 'function') {
@@ -2433,6 +2454,8 @@ function startLiveCompass() {
 function _lcActivate() {
   LC.active = true; LC.filt = null; LC.shown = null;
   LC.locked = false; LC.alignSince = 0; LC.gotAbs = false;
+  _lcVibrate(25); // started from a tap, so the browser allows vibration from now on
+  try { const AC = window.AudioContext || window.webkitAudioContext; if (AC) { _lcAudio = _lcAudio || new AC(); _lcAudio.resume(); } } catch (e) {}
   LC.startT = performance.now();
   lcLoadCal();
   document.getElementById('liveCompStartBtn').style.display = 'none';
@@ -2590,7 +2613,7 @@ function _lcDraw() {
         if (!LC.alignSince) LC.alignSince = now;
         else if (now - LC.alignSince >= LC_HOLD_MS) {
           LC.locked = true;
-          if (navigator.vibrate) navigator.vibrate(60);
+          _lcLockFeedback();
         }
       } else {
         LC.alignSince = 0;
