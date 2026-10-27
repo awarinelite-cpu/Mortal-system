@@ -295,6 +295,191 @@ canvas{display:block;}
   .hrow{grid-template-columns:1fr 1fr;}
   .dual-sol{grid-template-columns:1fr;}
 }
+/* ═══════════════ THEME 2 — "FIELD INSTRUMENT" ═══════════════
+   Softer tablet/capsule shapes, readable sizes, one dark instrument slab
+   (the Barrel Board) as the focal point. Colours/shape only: no logic here. */
+:root{
+  --bg:#e3e8e1;--bg2:#f6f8f3;--bg3:#d8dfd5;
+  --ink:#13211a;--ink2:#22332a;--ink3:#46574d;--dim:#667569;--line:#c3ccbf;
+  --red:#c23a2e;--grn:#1f7a3e;--yel:#946500;--ora:#b4520a;
+  --cbg:#edf1ea;--iobg:#fbfcf9;
+  --rok:#e3f2e6;--rwarn:#faf0d4;--rerr:#fae5e2;--rdng:#faeadf;
+  --acc:#d99a17;--acc-ink:#1b1405;
+  --slab:#16211a;--slab-ink:#e9efe4;--slab-dim:#9db0a2;--slab-acc:#f2b63d;--slab-line:rgba(255,255,255,.09);
+  --shadow:rgba(19,33,26,.14);
+  --font:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --fontd:"Bahnschrift","DIN Alternate","Roboto Condensed",sans-serif-condensed,"Arial Narrow",system-ui,sans-serif;
+  --card:0 1px 0 rgba(255,255,255,.7) inset,0 12px 28px -18px rgba(19,33,26,.45);
+}
+:root.dark{
+  --bg:#0d130f;--bg2:#162019;--bg3:#0a0f0c;
+  --ink:#e4ebe0;--ink2:#c6d1c2;--ink3:#9aa99a;--dim:#6f8073;--line:#2a372d;
+  --red:#ea5d50;--grn:#52c277;--yel:#e3ac3c;--ora:#e2813a;
+  --cbg:#111913;--iobg:#0e150f;
+  --rok:#12301b;--rwarn:#31260a;--rerr:#3a1612;--rdng:#3a2010;
+  --acc:#eaaa30;--acc-ink:#1b1405;
+  --slab:#070b08;--slab-ink:#e9efe4;--slab-dim:#8a9d8f;--slab-acc:#f5bd45;--slab-line:rgba(255,255,255,.08);
+  --shadow:rgba(0,0,0,.6);
+  --card:0 1px 0 rgba(255,255,255,.04) inset,0 14px 30px -18px rgba(0,0,0,.9);
+}
+html,body{font-family:var(--font);font-weight:500;-webkit-tap-highlight-color:transparent;}
+strong,b{font-weight:700;}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px;}
+/* small inline labels were 7–9px with 2–5px tracking: make them legible */
+[style*="letter-spacing"]{letter-spacing:.06em!important;}
+[style*="font-size:7px"],[style*="font-size:8px"],[style*="font-size:9px"]{font-size:11px!important;}
+.dk{font-size:11px!important;letter-spacing:.06em!important;}
+
+/* header */
+.hdr{border-bottom:0;padding-bottom:4px;margin-bottom:12px;}
+.hdr-l .sys{font-size:10px;letter-spacing:.12em;color:var(--dim);font-weight:600;}
+.hdr-l h1{font-family:var(--fontd);font-size:30px;letter-spacing:.03em;font-weight:800;}
+.hdr-l .sub{font-size:10.5px;letter-spacing:.04em;color:var(--dim);font-weight:500;}
+.clock{font-family:var(--fontd);font-size:22px;letter-spacing:.04em;font-weight:700;font-variant-numeric:tabular-nums;}
+.dateln{font-size:11px;letter-spacing:.04em;color:var(--dim);}
+
+/* weapon picker */
+.weapon-toggle-header{border:1px solid var(--line);border-radius:20px;padding:12px 18px;box-shadow:var(--card);}
+.weapon-toggle-header-label{font-size:10.5px;letter-spacing:.1em;font-weight:600;color:var(--dim);}
+.weapon-toggle-header-active{font-family:var(--fontd);font-size:17px;letter-spacing:.03em;font-weight:700;}
+.weapon-toggle{border:0;gap:8px;}
+.weapon-toggle.open{padding-top:8px;}
+.wtbtn{border:1px solid var(--line);border-radius:18px;background:var(--bg2);padding:14px 6px 18px;}
+.wtbtn:last-child{border:1px solid var(--line);}
+.wtbtn.active{background:var(--ink);color:var(--bg);border-color:var(--ink);}
+.wtbtn.active::after{font-size:9px;letter-spacing:.12em;}
+.wt-cal{font-family:var(--fontd);font-size:24px;font-weight:700;}
+.wt-name{font-size:10.5px;letter-spacing:.04em;font-weight:600;}
+.wt-range{font-size:10.5px;}
+
+/* spec bar + readiness pills */
+#weaponSpecBar{border:1px solid var(--line);border-radius:18px;padding:11px 16px;}
+.wsb-name{font-family:var(--fontd);font-size:15px;letter-spacing:.04em;font-weight:700;}
+.wsb-stats{font-size:11px;letter-spacing:.04em;gap:6px 14px;}
+.rstrip{border:0;gap:6px;overflow-x:auto;scrollbar-width:none;}
+.rstrip::-webkit-scrollbar{display:none;}
+.ri{flex:1 1 auto;min-width:0;gap:4px;border:1px solid var(--line);border-radius:999px;background:var(--bg2);padding:8px 7px;font-size:10px;letter-spacing:.02em;font-weight:700;justify-content:center;}
+.ri .dot{width:7px;height:7px;flex-shrink:0;}
+.ri:last-child{border:1px solid var(--line);}
+.ri.ok{border-color:var(--grn);background:var(--rok);}
+.ri.warn{border-color:var(--yel);background:var(--rwarn);}
+.ri.danger{border-color:var(--red);background:var(--rerr);}
+.dot{width:9px;height:9px;}
+
+/* charge selection: separate capsules, selected one is the amber accent */
+.cstrip{border:0;gap:8px;}
+.cstrip-label{position:static;grid-column:1/-1;background:none;padding:0 4px;font-size:11px;letter-spacing:.1em;font-weight:700;color:var(--ink3);}
+.cstrip .cbtn{border:1px solid var(--line);border-radius:18px;background:var(--bg2);padding:12px 4px;box-shadow:var(--card);}
+.cstrip .cbtn.in-range{background:var(--rok);border-color:var(--grn);}
+.cstrip .cbtn.sel{background:var(--acc);border-color:var(--acc);color:var(--acc-ink);}
+.cstrip .cbtn.sel::after{color:var(--acc-ink);}
+.cbtn .cn{font-family:var(--fontd);font-size:17px;letter-spacing:.04em;font-weight:700;}
+.cbtn .cv,.cbtn .cm{font-size:11px;}
+.cbtn.out-range{opacity:.45;}
+
+/* panels, fields */
+.panel,.muz-panel{border:1px solid var(--line);border-radius:24px;padding:18px;box-shadow:var(--card);}
+.ptitle,.muz-panel-title{font-size:11px;letter-spacing:.1em;font-weight:700;color:var(--ink2);border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:14px;}
+.flbl{font-size:10.5px;letter-spacing:.08em;font-weight:700;color:var(--ink3);margin-bottom:6px;}
+input,select{border:1px solid var(--line);border-radius:16px;background:var(--iobg);padding:12px 14px;font-size:16px;font-weight:600;}
+input:focus,select:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(217,154,23,.28);}
+input::placeholder{font-weight:400;color:var(--dim);}
+.coord-tabs{display:inline-flex;gap:2px;background:var(--bg3);border-radius:999px;padding:3px;}
+.coord-tab{border:0;background:transparent;border-radius:999px!important;padding:8px 16px;font-size:10.5px;letter-spacing:.06em;font-weight:700;}
+.coord-tab.active{background:var(--ink);color:var(--bg);}
+
+/* buttons */
+.btn{border:1px solid var(--line);background:var(--bg2);color:var(--ink2);border-radius:999px;font-size:11px;letter-spacing:.08em;font-weight:700;padding:9px 18px;min-height:40px;}
+.btn:hover{background:var(--bg3);color:var(--ink);border-color:var(--ink3);}
+.btn:active,.fire-btn:active,.cbtn:active,.sol-card:active{transform:scale(.97);}
+.btn-sm{font-size:10.5px;letter-spacing:.06em;padding:7px 13px;min-height:34px;}
+#viewMapBtn{border-color:var(--acc);}
+.fire-btn{border-radius:999px;background:var(--acc);color:var(--acc-ink);font-family:var(--fontd);font-size:19px;letter-spacing:.16em;font-weight:800;padding:17px;box-shadow:0 12px 24px -12px var(--acc);}
+.fire-btn::before{display:none;}
+.fire-btn:hover{background:var(--acc);filter:brightness(1.06);}
+.fire-btn:disabled{background:var(--bg3);color:var(--dim);box-shadow:none;filter:none;}
+.angle-mode-btn{border:1px solid var(--line);border-radius:999px;padding:10px 18px;font-size:11px;letter-spacing:.06em;font-weight:700;}
+.angle-mode-btn.active{background:var(--ink);color:var(--bg);border-color:var(--ink);}
+
+/* status boxes */
+.range-box,.warn-ok,.warn-err,.err{border-radius:16px;font-size:12px;letter-spacing:.02em;font-weight:600;line-height:1.5;padding:11px 16px;}
+.warn-err{border-width:1px;}
+.rb-status{font-size:13px;letter-spacing:.06em;}
+.danger-close-box{border-radius:20px;border-width:2px;}
+.dcb-title{font-family:var(--fontd);font-size:17px;letter-spacing:.1em;}
+.dcb-body{font-size:12px;letter-spacing:.02em;}
+
+/* THE BARREL BOARD — the one dark, glowing focal point */
+.barrel-board{border:0;border-radius:28px;background:var(--slab);color:var(--slab-ink);box-shadow:0 22px 40px -22px rgba(0,0,0,.7);}
+.bb-header{background:transparent;color:var(--slab-dim);border-bottom:1px solid var(--slab-line);padding:14px 20px;font-size:11px;letter-spacing:.14em;font-weight:700;}
+.bb-header .bbtime{font-size:11px;opacity:1;}
+.bb-header .bbexport{border-radius:999px;padding:7px 14px;font-size:10.5px;letter-spacing:.08em;color:var(--slab-ink);border-color:var(--slab-line);}
+.bb-main{border-bottom:1px solid var(--slab-line);}
+.bb-cell{border-right:1px solid var(--slab-line);padding:24px 18px;}
+.bb-cell .bblbl{font-size:11px;letter-spacing:.14em;color:var(--slab-dim);font-weight:700;}
+.bb-cell .bbval{font-family:var(--fontd);font-size:68px;font-weight:700;letter-spacing:0;color:var(--slab-acc);font-variant-numeric:tabular-nums;text-shadow:0 0 28px rgba(242,182,61,.28);}
+.bb-cell .bbval.red{color:#ff7b6b;text-shadow:0 0 28px rgba(255,123,107,.3);}
+.bb-cell .bbval.grn{color:#72d98f;text-shadow:none;}
+.bb-cell .bbval.ora{color:#ffa05a;}
+.bb-cell .bbunit{color:var(--slab-dim);font-size:13px;letter-spacing:.1em;}
+.bb-cell .bbsub{color:var(--slab-ink);font-size:12px;letter-spacing:.04em;border-top:1px solid var(--slab-line);font-weight:600;}
+.bb-sub{border-bottom:0;background:rgba(255,255,255,.035);}
+.bb-sub-cell{border-right:1px solid var(--slab-line);}
+.bb-sub-cell .bslbl{font-size:10.5px;letter-spacing:.08em;color:var(--slab-dim);font-weight:600;}
+.bb-sub-cell .bsval{font-family:var(--fontd);font-size:19px;color:var(--slab-ink);font-weight:700;}
+.bb-sub-cell .bsval.red{color:#ff7b6b;}.bb-sub-cell .bsval.grn{color:#72d98f;}
+.bb-crew{padding:16px 18px;}
+.bb-crew .bccap{font-size:11px;letter-spacing:.1em;font-weight:700;}
+.csi{border-radius:16px;padding:10px 12px;}
+.csi-txt{font-size:12.5px;line-height:1.55;font-weight:500;}
+.csi-num{border-width:1.5px;}
+.csi-warn,.csi-danger{border-width:1px;}
+
+/* inside the dark slab, inline var(--ink)/var(--red) colours set by JS must read on dark */
+.bb-header,.bb-main,.bb-sub{--ink:#e9efe4;--ink2:#e9efe4;--ink3:#9db0a2;--dim:#9db0a2;--red:#ff7b6b;--grn:#72d98f;--yel:#f2b63d;}
+.bb-crew{color:var(--ink);}
+.bb-sub-cell:last-child:nth-child(odd){grid-column:1/-1;border-right:0;}
+/* data, history, solution cards */
+.dbox{border-radius:16px;padding:12px 14px;}
+.dbox .dk{font-size:10.5px;letter-spacing:.08em;font-weight:600;}
+.dbox .dv{font-family:var(--fontd);font-size:20px;font-weight:700;}
+.dbox .dv.big{font-size:25px;}
+.sol-card{border:1px solid var(--line);border-radius:22px;padding:14px 18px;box-shadow:var(--card);}
+.sol-card.active{background:var(--slab);color:var(--slab-ink);border-color:var(--slab);}
+.sol-card-label{font-size:10.5px;letter-spacing:.1em;font-weight:700;opacity:.75;}
+.sol-card-angle{font-family:var(--fontd);font-size:42px;font-weight:700;}
+.sol-card.active .sol-card-angle{color:var(--slab-acc);}
+.sol-card-sub{font-size:11px;letter-spacing:.03em;font-weight:600;}
+.muz-display{border-radius:18px;}
+.muz-val{font-family:var(--fontd);font-size:38px;}
+.muz-sub{font-size:11px;letter-spacing:.04em;}
+.muz-badge{border-radius:999px;font-size:10px;letter-spacing:.08em;padding:4px 10px;}
+.hrow{border-radius:16px;padding:10px 14px;}
+.hk{font-size:10px;letter-spacing:.06em;}.hv{font-size:12px;}
+.sep{font-size:11px;letter-spacing:.12em;}
+canvas{border-radius:18px;max-width:100%;}
+.g2>*,.g3>*,.g4>*{min-width:0;} /* lets grid columns shrink so the page never scrolls sideways */
+#compassCanvas,#elevCanvas,#mapCanvas{border:1px solid var(--line);}
+
+/* chrome */
+.dm-toggle{border:0;border-radius:999px;background:var(--ink);color:var(--bg);font-size:11px;letter-spacing:.08em;padding:10px 16px;bottom:14px;right:14px;opacity:.92;box-shadow:0 10px 24px -10px rgba(0,0,0,.6);}
+.toast{border-radius:999px;font-size:12px;letter-spacing:.04em;padding:11px 22px;}
+#installBanner{border-radius:20px;border:0;font-size:12px;letter-spacing:.04em;}
+.inst-btn{border-radius:999px;font-size:11px;letter-spacing:.08em;padding:9px 16px;}
+#offlineBadge{border-radius:14px;font-size:11px;letter-spacing:.08em;}
+.tmap-bar{border-bottom:1px solid var(--line);}
+.tmap-bar .tmap-title{font-size:12px;letter-spacing:.08em;font-weight:700;}
+.tmap-bar .tmap-title small{font-size:11px;letter-spacing:.04em;}
+.tmap-msg{font-size:11px;letter-spacing:.03em;}
+@media(max-width:620px){
+  .hdr-l h1{font-size:27px;}
+  .bb-cell{border-right:0;border-bottom:1px solid var(--slab-line);}
+  .bb-cell:last-child{border-bottom:0;}
+  .bb-cell .bbval{font-size:60px;}
+  .wtbtn,.wtbtn:last-child{border:1px solid var(--line);}
+  .bb-sub-cell{border-bottom:1px solid var(--slab-line);}
+}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;}}
 </style>
 </head>
 <body>
