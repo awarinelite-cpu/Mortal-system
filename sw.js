@@ -1,5 +1,5 @@
 /* M57 FCS — Service Worker v1.1 — Full Offline Cache */
-const CACHE_NAME = 'm57-fcs-v2';
+const CACHE_NAME = 'm57-fcs-v3';
 const ASSETS = [
   './index.html',
   './manifest.json',
